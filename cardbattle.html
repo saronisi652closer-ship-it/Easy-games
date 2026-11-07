@@ -1,0 +1,794 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>カードバトル 試作版</title>
+<meta name="theme-color" content="#141f27">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Kaku+Gothic+New:wght@400;700;900&display=swap">
+<style>
+/* Layout: one-screen card table. CPU rail / CPU field / center strip / your field / your rail / hand */
+:root{
+  --table:#141f27; --felt:#1c2c35; --felt-hi:#254049; --rail:#10191f; --line:rgba(239,230,210,.14);
+  --ivory:#efe6d2; --ivory-lo:#e0d3b8; --ivory-def:#d9e4ec; --ivory-def-lo:#c4d3de; --win:#d8cbae;
+  --spell:#e7dff1; --spell-lo:#d6c9e6; --spell-opp:#f1dfd4; --spell-opp-lo:#e3c7b7; --ink:#2b241d;
+  --text:#e9e2d2; --muted:#93a3ab; --mana:#e4a93c; --mana-hi:#ffe08a; --mana-lo:#b17a1d;
+  --atk:#c4523b; --def:#3f72a0; --ok:#78c287; --sel:#f1d36b; --danger:#e0705a;
+  --f-mat:#a99e88; --f-norm:#b8894f; --f-up:#e4b23c; --f-wall:#7f8d95; --f-spell:#8f6bbd; --f-opp:#c06f4f;
+  --cpu-tint:rgba(208,80,58,.55); --me-tint:rgba(79,134,198,.6);
+  --display:"Dela Gothic One","Hiragino Sans","Noto Sans JP",sans-serif;
+  --body:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",sans-serif;
+  --slotH:104px; --artS:28px; --handW:74px; --handH:128px;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{height:100%}
+body{height:100%;margin:0;background:radial-gradient(ellipse at 50% 45%,var(--felt) 0%,var(--table) 70%) var(--table);color:var(--text);font-family:var(--body);overflow:hidden;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  -webkit-tap-highlight-color:transparent;user-select:none}
+button{font-family:var(--body);font-weight:700;border:0;border-radius:8px;padding:10px 14px;font-size:14px;cursor:pointer;
+  background:var(--ivory);color:var(--ink)}
+button:disabled{opacity:.35;cursor:default}
+button:focus-visible,.mc:focus-visible{outline:2px solid var(--sel);outline-offset:2px}
+button.ghost{background:transparent;color:var(--text);border:1px solid var(--line)}
+button.mana{background:var(--mana);color:var(--ink)}
+button.red{background:var(--atk);color:var(--ivory)}
+#app{height:100%;max-width:520px;margin:0 auto;display:flex;flex-direction:column;gap:6px;padding-block:8px}
+
+/* ---- rails: life, mana, counts ---- */
+.rail{position:relative;background:var(--rail);border:1px solid var(--line);border-radius:12px;padding:6px 10px;min-height:50px;
+  display:flex;align-items:center;transition:box-shadow .3s,border-color .3s}
+.rail.active{border-color:rgba(228,169,60,.6);box-shadow:0 0 0 1px rgba(228,169,60,.2),0 0 18px rgba(228,169,60,.14)}
+.rb{flex:1;min-width:0;display:flex;align-items:center;gap:12px}
+.who{display:flex;flex-direction:column;gap:2px;min-width:44px;line-height:1.2}
+.who b{font-size:12px}
+.who .turn{font-size:9px;font-weight:900;color:var(--mana);letter-spacing:.08em}
+.lpbox{display:flex;flex-direction:column;gap:4px;min-width:86px}
+.lp{font-family:var(--display);font-size:24px;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.lp small{font-family:var(--body);font-size:9px;font-weight:700;color:var(--muted);margin-right:4px;letter-spacing:.1em;vertical-align:middle}
+.lpbar{display:block;height:5px;border-radius:3px;background:rgba(239,230,210,.12);overflow:hidden}
+.lpbar i{display:block;height:100%;border-radius:3px;background:var(--ok);transition:width .5s ease}
+.lpbar i.mid{background:var(--mana)} .lpbar i.low{background:var(--danger)}
+.mana-box{display:flex;align-items:center;gap:8px;margin-left:auto}
+.gems{display:grid;grid-template-columns:repeat(5,8px);gap:3px}
+.gem{width:8px;height:8px;border-radius:2px;transform:rotate(45deg) scale(.78);background:rgba(228,169,60,.16)}
+.gem.on{background:var(--mana);box-shadow:0 0 5px rgba(228,169,60,.55)}
+.gem.extra{background:var(--mana-hi)}
+.mana-num{font-family:var(--display);color:var(--mana);font-size:20px;line-height:1;text-align:center;font-variant-numeric:tabular-nums}
+.mana-num small{display:block;font-family:var(--body);font-size:9px;font-weight:700;color:var(--muted);letter-spacing:.08em;margin-top:2px}
+.counts{display:flex;flex-direction:column;gap:3px}
+.cnt{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.cnt i{width:8px;height:11px;border-radius:2px;border:1px solid var(--muted)}
+.cnt.deck i{background:var(--muted)}
+.cnt b{color:var(--text)}
+.rfx{position:absolute;inset:0;pointer-events:none}
+.float{position:absolute;left:50%;top:4px;font-family:var(--display);font-size:22px;text-shadow:0 2px 6px rgba(0,0,0,.7);animation:rise 1.2s ease-out forwards}
+.float.hit{color:var(--danger)} .float.heal{color:var(--ok)}
+@keyframes rise{0%{opacity:0;transform:translate(-50%,8px) scale(.9)}15%{opacity:1;transform:translate(-50%,0) scale(1.12)}100%{opacity:0;transform:translate(-50%,-26px)}}
+.rail.shake{animation:shake .35s}
+@keyframes shake{0%,100%{transform:none}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+
+/* ---- field ---- */
+.field{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;border-radius:12px;padding:7px;border:1px solid var(--line);
+  background:radial-gradient(ellipse at 50% 50%,var(--felt-hi) 0%,var(--felt) 75%)}
+#fieldCpu{box-shadow:inset 0 3px 0 var(--cpu-tint),inset 0 0 26px rgba(0,0,0,.4)}
+#fieldMe{box-shadow:inset 0 -3px 0 var(--me-tint),inset 0 0 26px rgba(0,0,0,.4)}
+.slot{position:relative;height:var(--slotH);border-radius:8px;display:flex;background:rgba(0,0,0,.16);outline:1px dashed rgba(239,230,210,.13);outline-offset:-1px}
+.slot:empty::after{content:"";position:absolute;left:50%;top:50%;width:18px;height:18px;transform:translate(-50%,-50%) rotate(45deg);border:1px solid rgba(239,230,210,.1);border-radius:3px}
+.slot:not(:empty){background:none;outline:none}
+
+/* ---- center strip ---- */
+.center{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.turninfo{font-family:var(--display);font-size:13px;letter-spacing:.04em}
+.phases{display:inline-flex;gap:2px;padding:2px;border-radius:999px;background:var(--rail);border:1px solid var(--line)}
+.phases b{font-size:11px;padding:3px 9px;border-radius:999px;color:var(--muted)}
+.phases b.on{background:var(--mana);color:var(--ink)}
+.btns{margin-left:auto;display:flex;gap:6px}
+.btns button{padding:8px 11px;font-size:13px}
+.logline{flex:1 1 0;min-width:0;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;min-height:16px}
+.prompt{flex-basis:100%;font-size:13px;color:var(--sel);font-weight:700}
+
+/* ---- hand ---- */
+.hand{display:flex;gap:7px;overflow-x:auto;padding:8px 6px 6px;min-height:var(--handH);scrollbar-width:thin;border-radius:12px;
+  background:linear-gradient(180deg,rgba(0,0,0,0),rgba(0,0,0,.22))}
+.hand .mc{flex:0 0 var(--handW);height:calc(var(--handH) - 14px)}
+@media (hover:hover){.hand .mc:hover{transform:translateY(-4px)}}
+
+/* ---- card ---- */
+.mc{--frame:var(--f-norm);position:relative;width:100%;color:var(--ink);border-radius:8px;padding:4px 4px 3px;display:flex;flex-direction:column;justify-content:space-between;
+  background:linear-gradient(180deg,var(--ivory),var(--ivory-lo));border:2px solid var(--frame);cursor:pointer;
+  box-shadow:0 2px 0 rgba(0,0,0,.35),0 5px 12px rgba(0,0,0,.28);transition:transform .15s,opacity .2s,filter .2s}
+.mc.t-mat{--frame:var(--f-mat)} .mc.t-wall{--frame:var(--f-wall)}
+.mc.t-up{--frame:var(--f-up);box-shadow:0 2px 0 rgba(0,0,0,.35),0 5px 12px rgba(0,0,0,.28),inset 0 0 0 1px rgba(255,240,190,.8)}
+.mc.def{background:linear-gradient(180deg,var(--ivory-def),var(--ivory-def-lo))}
+.mc.spell{--frame:var(--f-spell);background:linear-gradient(180deg,var(--spell),var(--spell-lo))}
+.mc.spell.opp{--frame:var(--f-opp);background:linear-gradient(180deg,var(--spell-opp),var(--spell-opp-lo))}
+.mc .cost{position:absolute;top:-7px;left:-7px;width:21px;height:21px;border-radius:50%;z-index:1;display:grid;place-items:center;
+  background:radial-gradient(circle at 35% 30%,var(--mana-hi),var(--mana) 55%,var(--mana-lo));color:var(--ink);
+  font-family:var(--display);font-size:12px;box-shadow:0 0 0 2px var(--rail),0 2px 4px rgba(0,0,0,.4)}
+.mc .nm{font-weight:900;font-size:11px;line-height:1.2;padding-left:11px;word-break:break-all;min-height:1.2em}
+.mc .win{position:relative;display:grid;place-items:center;border-radius:5px;margin-block:2px;padding-block:2px;
+  background:var(--win);box-shadow:inset 0 0 0 1px rgba(43,36,29,.18),inset 0 2px 4px rgba(43,36,29,.15)}
+.mc.t-up .win{background:linear-gradient(180deg,#f1dc96,#dcbd63)}
+.mc.def .win{background:#bccbd6}
+.mc.spell .win{background:rgba(255,255,255,.4)}
+.mc .art{width:var(--artS);height:var(--artS);image-rendering:pixelated;display:block}
+.mc .tag{font-size:9px;font-weight:700;color:rgba(43,36,29,.6);letter-spacing:.04em}
+.field .mc .tag{display:none}
+.mc .st{display:flex;flex-direction:column;gap:1px;font-family:var(--display);font-size:12px;line-height:1.15;font-variant-numeric:tabular-nums}
+.mc .st span{display:flex;align-items:center;gap:3px}
+.mc .st b{font-family:var(--body);font-size:8px;font-weight:900;line-height:12px;padding:0 3px;border-radius:3px;color:var(--ivory)}
+.mc .st .a{color:var(--atk)} .mc .st .a b{background:var(--atk)}
+.mc .st .d{color:var(--def)} .mc .st .d b{background:var(--def)}
+.mc.def .st .a,.mc.atkpos .st .d{opacity:.45}
+.mc .st .up{text-decoration:underline;text-decoration-thickness:2px}
+.mc .badge{position:absolute;top:2px;right:2px;font-size:8px;font-weight:900;padding:1px 3px;border-radius:3px;background:var(--def);color:var(--ivory)}
+.mc .badge.lim{background:var(--atk)}
+.mc .buff{position:absolute;bottom:2px;left:2px;font-size:8px;font-weight:900;padding:1px 3px;border-radius:3px;background:var(--atk);color:var(--ivory)}
+.mc.done{filter:grayscale(.65) brightness(.75)}
+.mc.can{box-shadow:0 0 0 3px var(--sel),0 0 16px rgba(241,211,107,.55)}
+.mc.picked{box-shadow:0 0 0 3px var(--ok),0 0 16px rgba(120,194,135,.5);transform:translateY(-3px)}
+.mc.dim{opacity:.35}
+.hand .mc.cant{filter:saturate(.4) brightness(.72)}
+
+/* ---- sheet + modal ---- */
+.scrim{position:fixed;inset:0;background:rgba(8,12,15,.6);display:flex;align-items:flex-end;justify-content:center;z-index:20}
+.scrim.mid{align-items:center;padding:16px}
+.sheet{width:100%;max-width:520px;background:var(--rail);border-radius:14px 14px 0 0;padding:16px max(16px,env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));
+  display:flex;flex-direction:column;gap:10px;max-height:80%;overflow:auto}
+.modal{width:100%;max-width:400px;background:var(--rail);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:12px;max-height:90%;overflow:auto}
+.big h3,.modal h3{font-family:var(--display);font-weight:400;font-size:20px;margin:0;text-wrap:balance}
+.head{display:flex;align-items:center;gap:12px}
+.bigart{width:64px;height:64px;image-rendering:pixelated;background:var(--win);border-radius:10px;padding:4px;flex:none;box-shadow:inset 0 0 0 2px rgba(43,36,29,.2)}
+.meta{display:flex;gap:8px;flex-wrap:wrap;font-size:12px}
+.chip{border:1px solid var(--line);border-radius:999px;padding:2px 9px}
+.chip.m{color:var(--mana);border-color:rgba(228,169,60,.5)}
+.stats{font-family:var(--display);font-size:18px;display:flex;gap:16px;font-variant-numeric:tabular-nums}
+.stats .a{color:#e98a72} .stats .d{color:#8db6da}
+.fx{font-size:14px;line-height:1.6}
+.acts{display:flex;flex-direction:column;gap:8px}
+.note{font-size:12px;color:var(--muted);line-height:1.5}
+.loglist{font-size:13px;line-height:1.7;display:flex;flex-direction:column-reverse}
+.loglist div{border-bottom:1px solid var(--line);padding-block:3px}
+.deckpick{display:grid;gap:10px}
+.deckpick button{text-align:left;padding:14px;line-height:1.5}
+.deckpick b{font-family:var(--display);font-weight:400;font-size:17px;display:block}
+.deckpick span{font-weight:400;font-size:12px}
+.backlink{display:block;text-align:center;color:var(--muted);font-size:13px;font-weight:700;text-decoration:none;padding:6px}
+.backlink:hover{color:var(--text)}
+.rules{font-size:12px;color:var(--muted);line-height:1.7;margin:0;padding-left:18px}
+.result{font-family:var(--display);font-size:30px;text-align:center}
+#toast{position:fixed;left:50%;top:calc(50% - 20px);transform:translateX(-50%);z-index:15;background:var(--ivory);color:var(--ink);font-weight:900;font-size:14px;
+  padding:10px 16px;border-radius:10px;box-shadow:0 6px 24px rgba(0,0,0,.45);max-width:min(92%,420px);text-align:center;pointer-events:none}
+#toast.show{animation:pop .2s ease-out}
+@keyframes pop{from{transform:translate(-50%,6px);opacity:0}to{transform:translate(-50%,0);opacity:1}}
+@media (prefers-reduced-motion:reduce){.mc,.rail{transition:none}#toast.show,.float,.rail.shake{animation:none}.float{opacity:0}}
+
+/* 縦画面で高さが低い端末 */
+@media (max-height:700px){:root{--slotH:94px;--artS:22px;--handH:112px}.lp{font-size:20px}.rail{min-height:44px}}
+
+/* 縦画面で高さに余裕がある端末：カードを大きく */
+@media (orientation:portrait) and (min-height:760px){
+  :root{--slotH:132px;--artS:40px;--handW:86px;--handH:156px}
+  #app{gap:8px;padding-block:12px}
+  .mc .nm{font-size:12px}
+}
+/* タブレット縦 */
+@media (orientation:portrait) and (min-width:700px) and (min-height:900px){
+  #app{max-width:720px}
+  :root{--slotH:184px;--artS:64px;--handW:124px;--handH:204px}
+  .mc{padding:6px 6px 5px}
+  .mc .nm{font-size:14px;padding-left:13px}
+  .mc .st{font-size:15px}
+  .mc .st b{font-size:10px;line-height:15px}
+  .mc .tag{font-size:11px}
+  .mc .badge,.mc .buff{font-size:10px}
+  .mc .cost{width:26px;height:26px;font-size:14px}
+  .lp{font-size:30px}
+}
+/* 横画面：左にライフ・マナ、右に場。中央の操作列と手札は横いっぱい */
+@media (orientation:landscape) and (min-width:600px){
+  :root{--slotW:96px;--slotH:128px;--artS:36px;--handW:96px;--handH:136px}
+  #app{max-width:1100px;display:grid;grid-template-columns:minmax(140px,190px) minmax(0,1fr);
+    grid-template-rows:auto auto auto minmax(0,1fr);grid-template-areas:"rc fc" "ce ce" "rm fm" "hd hd";gap:6px 10px}
+  #railCpu{grid-area:rc} #fieldCpu{grid-area:fc} #center{grid-area:ce} #railMe{grid-area:rm} #fieldMe{grid-area:fm} #hand{grid-area:hd}
+  .rb{display:grid;grid-template-columns:auto 1fr;align-content:center;gap:6px 10px}
+  .lpbox{min-width:0}
+  .mana-box{grid-column:1/-1;margin-left:0}
+  .counts{grid-column:1/-1;flex-direction:row;gap:12px}
+  .field{grid-template-columns:repeat(5,var(--slotW));justify-content:center}
+  .hand{justify-content:safe center}
+  .mc .nm{font-size:12px}
+}
+/* タブレット横（高さに余裕がある） */
+@media (orientation:landscape) and (min-width:600px) and (min-height:700px){
+  :root{--slotW:128px;--slotH:180px;--artS:60px;--handW:128px;--handH:196px}
+  .mc{padding:6px 6px 5px}
+  .mc .nm{font-size:14px;padding-left:13px}
+  .mc .st{font-size:15px}
+  .mc .st b{font-size:10px;line-height:15px}
+  .mc .tag{font-size:11px}
+  .mc .badge,.mc .buff{font-size:10px}
+  .mc .cost{width:26px;height:26px;font-size:14px}
+  .lp{font-size:28px}
+}
+/* スマホ横（高さが低い） */
+@media (orientation:landscape) and (min-width:600px) and (max-height:520px){
+  :root{--slotW:68px;--slotH:90px;--artS:20px;--handW:68px;--handH:104px}
+  #app{padding-block:4px;gap:4px 10px}
+  .field{padding:4px;gap:5px}
+  .rail{padding:4px 8px}
+  .rb{gap:4px 8px}
+  .lp{font-size:18px}
+  .mana-num{font-size:16px}
+  .gems{grid-template-columns:repeat(10,6px);gap:2px}
+  .gem{width:6px;height:6px}
+  .mc{padding:3px 3px 2px}
+  .mc .nm{font-size:10px;padding-left:12px}
+  .mc .st{font-size:11px}
+  .mc .win{margin-block:1px}
+  .hand{padding-top:8px}
+  .hand .mc .tag{display:none}
+  .center button{padding:6px 10px;font-size:12px}
+  .sheet,.modal{max-height:94%}
+  .bigart{width:48px;height:48px}
+}
+</style>
+<style>
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+img{max-width:100%}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div class="rail" id="railCpu"></div>
+  <div class="field" id="fieldCpu"></div>
+  <div class="center" id="center"></div>
+  <div class="field" id="fieldMe"></div>
+  <div class="rail" id="railMe"></div>
+  <div class="hand" id="hand"></div>
+</div>
+<div id="toast" role="status" hidden></div>
+<div id="layer"></div>
+
+<script>
+/* ---------- カードデータ（初期カード一覧と同じ） ---------- */
+const CARDS=[
+ {no:1,name:'ちびスライム',kind:'m',cls:'素材',mana:1,atk:100,def:100,trib:0,fx:null,text:'効果なし',lim:3},
+ {no:2,name:'見習い兵',kind:'m',cls:'素材',mana:1,atk:500,def:300,trib:0,fx:null,text:'効果なし',lim:3},
+ {no:3,name:'石ころゴーレム',kind:'m',cls:'素材',mana:1,atk:300,def:800,trib:0,fx:null,text:'効果なし',lim:3},
+ {no:4,name:'小さな妖精',kind:'m',cls:'素材',mana:2,atk:200,def:200,trib:0,fx:'fairy',text:'生け贄にされたとき、カードを1枚引く',lim:3},
+ {no:5,name:'灯りのランプ',kind:'m',cls:'素材',mana:2,atk:300,def:300,trib:0,fx:'lamp',text:'破壊されたとき、次の自分のターンのマナ+1',lim:3},
+ {no:6,name:'伝令の鳥',kind:'m',cls:'素材',mana:2,atk:400,def:100,trib:0,fx:'bird',text:'召喚時、デッキの一番上を見て、デッキの一番下に置いてもよい',lim:3},
+ {no:7,name:'癒しの僧侶',kind:'m',cls:'通常',mana:3,atk:400,def:600,trib:0,fx:'priest',text:'召喚時、自分のライフを500回復',lim:3},
+ {no:8,name:'盾の騎士',kind:'m',cls:'通常',mana:4,atk:800,def:1400,trib:0,fx:'shield',text:'守備表示の間、相手はこのカード以外の自分のモンスターを攻撃できない',lim:3},
+ {no:9,name:'狩人',kind:'m',cls:'通常',mana:4,atk:1000,def:600,trib:0,fx:'hunter',text:'攻撃力1500以上のモンスターと戦闘するとき、攻撃力+500',lim:3},
+ {no:10,name:'魔導書の学徒',kind:'m',cls:'通常',mana:3,atk:600,def:500,trib:0,fx:'scholar',text:'自分が魔法を使うたびに、そのターン攻撃力+300',lim:3},
+ {no:11,name:'剣士',kind:'m',cls:'通常',mana:4,atk:1300,def:1000,trib:0,fx:'sword',text:'相手モンスターを戦闘で破壊したとき、カードを1枚引く',lim:3},
+ {no:12,name:'突撃兵',kind:'m',cls:'通常',mana:4,atk:1400,def:400,trib:0,fx:null,text:'効果なし',lim:3},
+ {no:13,name:'竜騎士',kind:'m',cls:'上級',mana:5,atk:1800,def:1200,trib:1,fx:null,text:'効果なし',lim:3},
+ {no:14,name:'鉄の巨人',kind:'m',cls:'上級',mana:6,atk:1600,def:1800,trib:1,fx:null,text:'効果なし',lim:3},
+ {no:15,name:'古代竜',kind:'m',cls:'上級',mana:6,atk:2000,def:1500,trib:2,fx:null,text:'効果なし',lim:1},
+ {no:16,name:'雷の魔獣',kind:'m',cls:'上級',mana:5,atk:1500,def:1000,trib:1,fx:'beast',text:'召喚時、相手の守備表示モンスター1体を攻撃表示にする',lim:1},
+ {no:17,name:'城壁',kind:'m',cls:'壁',mana:4,atk:0,def:2000,trib:0,fx:null,text:'効果なし',lim:3},
+ {no:18,name:'木の盾兵',kind:'m',cls:'壁',mana:3,atk:100,def:1600,trib:0,fx:null,text:'効果なし',lim:3},
+ {no:29,name:'逆境の見張り番',kind:'m',cls:'通常',mana:3,atk:200,def:1000,trib:0,fx:'scout',text:'召喚時、自分のライフが相手より少なければ、カードを2枚引く',lim:3},
+ {no:19,name:'力の薬',kind:'s',timing:'self',mana:3,fx:'atk300',tgt:'own',text:'自分のモンスター1体の攻撃力+300（そのターン限り）',lim:3},
+ {no:20,name:'闘志の雄叫び',kind:'s',timing:'self',mana:4,fx:'atk500',tgt:'own',text:'自分のモンスター1体の攻撃力+500（そのターン限り）',lim:3},
+ {no:21,name:'あべこべの鏡',kind:'s',timing:'self',mana:4,fx:'swap',tgt:'any',text:'モンスター1体の攻撃力と守備力を入れ替える（そのターン限り）',lim:3},
+ {no:22,name:'雷撃',kind:'s',timing:'self',mana:5,fx:'destroy',tgt:'opp',text:'相手モンスター1体を破壊',lim:1},
+ {no:23,name:'封印の札',kind:'s',timing:'opp',mana:3,fx:'negBuff',text:'相手の攻撃力アップか攻守逆転の魔法を無効にする',lim:3},
+ {no:24,name:'完全封印',kind:'s',timing:'opp',mana:4,fx:'negAll',text:'相手の魔法1枚を無効にする',lim:3},
+ {no:25,name:'守りの結界',kind:'s',timing:'opp',mana:5,fx:'stop',text:'相手の攻撃を1回止める',lim:1},
+ {no:26,name:'魔力の泉',kind:'s',timing:'self',mana:3,fx:'manaUp',text:'次の自分のターンのマナを15にする。その次のターンは5になる',lim:1},
+ {no:27,name:'知恵の泉',kind:'s',timing:'self',mana:3,fx:'draw2',text:'カードを2枚引く',lim:3},
+ {no:28,name:'癒しの光',kind:'s',timing:'self',mana:3,fx:'heal',text:'自分のライフを1000回復',lim:3},
+];
+const C=Object.fromEntries(CARDS.map(c=>[c.no,c]));
+const DECKS=[
+ {name:'スタンダード',desc:'攻撃できるモンスターを中心にした共通デッキ。攻撃力アップは2枚だけ。',
+  list:[[29,2],[4,2],[6,1],[7,1],[8,1],[9,2],[11,3],[12,3],[13,2],[14,1],[15,1],[16,1],
+        [19,1],[20,1],[21,1],[22,1],[23,1],[24,1],[25,1],[26,1],[27,1],[28,1]]},
+];
+
+/* ---------- ドット絵（16×16） ---------- */
+const PAL={"k": "#2b241d", "w": "#ffffff", "s": "#f2c9a0", "S": "#d9a47e", "r": "#d0503a", "R": "#8f3426", "o": "#e07b39", "y": "#f5dd6b", "a": "#e4b23c", "g": "#6cbf5e", "G": "#3c7a3a", "b": "#4f86c6", "B": "#2f5680", "p": "#8a5fb5", "P": "#c9a7e6", "n": "#a86c3f", "N": "#5c3a22", "e": "#9aa3a8", "E": "#5f676b", "l": "#dfe4e6", "c": "#8fdcf0", "m": "#ee8fb3"};
+const ART={"1":["................","................","................","................","................","......kkkk......","....kkggggkk....","...kggggggwgk...","..kgggggggwggk..","..kggkgggkgggk..",".kgggkgggkggggk.",".kggggggggggggk.",".kgmmggggggmmgk.",".kGggggggggggGk.","..kkGGGGGGGGkk..","....kkkkkkkk...."],"2":["................","......kkkk......",".....keeeek.....","....keleeeek..k.","....kkkkkkkk.klk","....kssssssk.klk","....kskssksk.klk","....kssssssk.klk",".....kkkkkk..klk","...kkbbbbbbkkkok","..kbkbbbbbbkbsk.","..kskbbbbbbkkk..","...kkbbaabbk....","....kbbbbbbk....","....kNNkkNNk....","....kkk..kkk...."],"3":["................","................",".....kkkkkk.....","....keeeeeek....","...keelleeeek...","...keykeekyek...","..kkeeeeeeeekk..",".keekeeEEeekeek.",".keeekeeeekeeek.",".kEeeeeeeeeeeEk.","..kkeeeEEeeekk..","...keeeeeeeek...","...keeEkkEeek...","...kEEk..kEEk...","...kkkk..kkkk...","................"],"4":["................","..kk........kk..",".kcck......kcck.",".kclck....kclck.",".kcllck..kcllck.","..kclckkkkclck..","...kckmmmmkck...","....kmssssmk....","....ksksskk.....","....kssssssk....",".....kmkkmk.....","....kmmmmmmk....","....kPmmmmPk....",".....kmmmmk.....","......kkkk......",".......yy......."],"5":[".......kk.......","......k..k......",".....kkkkkk.....","....kaaaaaak....",".....kkkkkk.....","....kyk..kyk....","....kyoyyoyk....","....ky.oo.yk....","....kyoyyoyk....","....kyyrryyk....","....kyrooryk....","....kyroorrk....","....kyyrryyk....","....kkkkkkkk....","...kaaaaaaaak...","...kkkkkkkkkk..."],"6":["................","................","......kkkk......",".....kbbbbk.....","....kbbbwkbk....","....kbbbkkbkkk..","....kbbbbbbkyyk.","..kkkbbbbbbkkk..",".kbbbkbbbbbbk...","kbbBbbkbbbbbbk..",".kBBBbbkllllbk..","..kkkbbklrrlk...","....kbbbkllk....",".....kkbbbk.....","......kykyk.....","......kk.kk....."],"7":["...........kkk..","......kkkk.kak..",".....kwwwwkkak..","....kwwwwwwkk...","....kssssssk.k..","....kskssksk.k..","....kssssssk.k..",".....kkkkkk..k..","...kkwwwwwwkkk..","..kwkwwyywwkswk.","..kswwwyywwwkk..","...kkwwwwwwk.k..","....kwwwwwwk.k..","....kwwaawwk.k..","....kwwwwwwk.k..","....kkkkkkkk...."],"8":["................","......kkkk......",".....keeeek.....","....keeeeeek....","....kkkkkkkk....","....kekssksk....","....kssssssk....",".kkkkkkkkkk.....","kbbbbbbk.eekk...","kbbybbbkeeeeek..","kbyyybbkeeekek..","kbbybbbkeeeeek..","kbbbbbbkkeeek...",".kbbbbk.kEkEk...","..kbbk..kkkkk...","...kk..........."],"9":[".............k..","......kkkk..kNk.",".....kGGGGk.kNk.","....kGGGGGGkk.kN","....kGssssGk..kN","....kGskskGk..kN","....kGssssGk..kN",".....kkkkkk...kN","...kkggggggkkkkN","..kskggggggkk.kN","..kskgNNNNgk..kN","...kkggggggk.kNk","....kggggggk.kNk","....kNNkkNNk..k.","....kNk..kNk....","....kkk..kkk...."],"10":[".......kk.......","......kppk......",".....kpppk......","....kpppppk.....","...kkkkkkkkk....","....kssssssk....","....kskssksk....","....kssssssk....",".....kkkkkk.....","...kkppppppkk...","..kpkpkkkkpkpk..","..kpkkwwwwkkpk..","...kswwkkwwsk...","....kkwwwwkk....","....kppkkppk....","....kkk..kkk...."],"11":["..............k.","......kkkk...klk",".....kNNNNk.klk.","....kNNNNNNklk..","....kssssssklk..","....kskssksk....","....kssssskk....",".....kkkkkkk....","...krrrbbbbkak..","..kskrrbbbbbksk.","..kskbrrbbbbkk..","...kkbbrrbbk....","....kbbbbbbk....","....kNNkkNNk....","....kNk..kNk....","....kkk..kkk...."],"12":["k...............","klk.............",".klk..kkkk......","..klkkeeeek.....","...knkeeeeek....","....knkkkkkk....","....kskssksk....","....kssssssk....",".....knkkkk.....","...kkoknooookk..","..kokooknoookok.","..ksk.ookoook.sk","...kkoooookokk..","....kooooook....","...kNNk..kNNk...","...kkk....kkk..."],"13":["..kk........kk..",".krrk......krrk.",".krRrk.kk.krRrk.","..krrkkeek.krk..","...kkkeeeekkk...","....keeeeeek....","....kkkkkkkk....","....kskssksk....","....kssssssk....","...kkkkkkkkkk...","..krrrbbbbrrrk..",".krRkbbbbbbkRrk.",".kk.kbbaabbk.kk.","....kbbbbbbk....","....kNNkkNNk....","....kkk..kkk...."],"14":["................",".....kkkkkk.....","....keeeeeek....","....kekkkkek....","....kerrrrek....","....keeeeeek....","..kkkkeeeekkkk..",".keeekeEEekeeek.",".keEekeeeekeEek.",".keeekeEEekeeek.",".kEEk.keek.kEEk.",".keek.keek.keek.","..kk.keeeek.kk..","....keEkkEek....","...keeEk.kEeek..","...kkkk...kkkk.."],"15":[".kk.........kk..","kaak.......kaak.",".kaakkkkkkkaak..","..krrrrrrrrrk...",".krrrrrrrrrrrk..",".krryrrrrryrrk..",".krrkrrrrrkrrk..","..krrrrrrrrrk...","...krrwrwrrk....","..kkkrrrrrrkkk..",".kRRkrraarrkRRk.","kRRRkrraarrkRRRk","kRRk.krrrrk.kRRk",".kk..kRkkRk..kk.",".....kk..kk.....","................"],"16":["..ky......yk....","..kyk....kyk....","..kpkkkkkkpk....","..kppppppppk.ky.",".kppppppppppkyk.",".kppykppykppkk..",".kpppppppppppk..","..kpppwwwpppk...","...kpkwkwkppk...","..kkpppppppkkk..",".kpppppppppppk..",".kpPpppppppPpk..",".kppkpppppkppk..","..kpk.kpk.kpk...","..kyk.kyk.kyk...","...k...k...k...."],"17":["................",".kkk.kkkk.kkk...",".knk.knnk.knk...",".kkkkkkkkkkkk...",".knnknnnknnnk...",".kkkkkkkkkkkk...",".knnnknnnknnk...",".kkkkkkkkkkkk...",".knnknnnknnnk...",".kkkkkkkkkkkk...",".knnnkNNkknnk...",".kkkkkNNkkkkk...",".knnkkNNkknnk...",".kkkkkkkkkkkk...","................","................"],"18":["................","......kkkk......",".....kNNNNk.....","....kNNNNNNk....","....kssssssk....","....kskssksk....","....kssssssk....",".kkkkkkkkkk.....","knnnnnnk.bbkk...","knNnnNnkbbbbbk..","knnnnnnkbbbbsk..","knNnnNnkbbbbk...","knnnnnnkbbbbk...",".kkkkkk.kNkNk...","........kkkkk...","................"],"19":["................","......kkkk......","......knnk......","......kkkk......",".......kk.......","......kllk......",".....klrrlk.....","....klrrrrrk....","...klrwrrrrrk...","...krwrrrrrrk...","...krrrrrrrrk...","...krrrrrrrrk...","...kRrrrrrrRk...","....kRRRRRRk....",".....kkkkkk.....","................"],"20":["................","...y...yy...y...","....y..yy..y....","..y..kkkkkk..y..","....kooooook....","...kooyyyyook...","..kooyrrrryook..","..koyrkkkkryok..","..koyrkwwkryok..","..koyrkkkkryok..","..kooyrrrryook..","...kooyyyyook...","....kooooook....","..y..kkkkkk..y..","....y..yy..y....","...y...yy...y..."],"21":["................",".....kkkkkk.....","....kaaaaaak....","...kakkkkkkak...","...kakcclwkak...","...kakcclwkak...","...kakcccwkak...","...kakbccckak...","...kakbbcckak...","...kakbbbckak...","...kakkkkkkak...","....kaaaaaak....",".....kkaakk.....","......kaak......",".....kaaaak.....",".....kkkkkk....."],"22":["........kkkk....",".......kyyyk....","......kyyyk.....",".....kyyyk......","....kyyyk.......","...kyyyykkkk....","..kyyyyyyyyk....","..kkkkkyyyk.....",".....kyyyk......","....kyyyk.......","...kyyk.........","..kyyk..........","..kyk...........","..kk............","................","................"],"23":["................","....kkkkkkkk....","....kwwwwwwk....","....kwrrrrwk....","....kwwwwwwk....","....kwrkkrwk....","....kwrkkrwk....","....kwwrrwwk....","....kwrwwrwk....","....kwwrrwwk....","....kwrwwrwk....","....kwwwwwwk....","....kwrrrrwk....","....kwwwwwwk....","....kkkkkkkk....","................"],"24":["................",".....kkkkkk.....","....keEEEEek....","...keEk..kEek...","...kek....kek...","...kek....kek...","..kkkkkkkkkkkk..","..kaaaaaaaaaak..","..kayyyyyyyyak..","..kaaaakkaaaak..","..kaaaakkaaaak..","..kaaaaakaaaak..","..kaaaaakaaaak..","..kayyyyyyyyak..","..kkkkkkkkkkkk..","................"],"25":["................",".....kkkkkk.....","...kkcccccckk...","..kccllcccccck..",".kccllcccccccck.",".kclccccccccbck.","kcccccccccccbbck","kccccccccccbbcck","kcccccccccccccck","kccccccccccccbck","kbcccccccccccbbk","kbbccccccccbbbbk","kkkkkkkkkkkkkkkk",".kEEEEEEEEEEEEk.","..kkkkkkkkkkkk..","................"],"26":[".......kk.......","......kyyk......",".....kyaayk.....","....kyaaaayk....","...kyaayaaayk...","...kaaayyaaak...","...kaaaaaaaak...","....kaaaaaak....",".....kaaaak.....","......kaak......","..k....kk....k..",".kyk........kyk.","..k...k..k...k..",".....kyk.kyk....","......k...k.....","................"],"27":["................","..kk........kk..",".kNNkkkkkkkkNNk.",".kNNNNNNNNNNNNk.","..kNk......kNk..","..kNk..kk..kNk..","..kNk.klk..kNk..","..kNkkkkkkkkNk..","..keeeeeeeeeek..",".keEeeEeeEeeEek.",".kcccbccccbccck.",".kcbcccbccccbck.",".keeEeeeEeeeEek.",".keeeeEeeeEeeek.","..kkkkkkkkkkkk..","................"],"28":["................",".......kk.......","..y...kggk...y..","......kggk......","......kggk......","..kkkkkggkkkkk..","..kggggggggggk..","..kggggwwggggk..","..kggggggggggk..","..kkkkkggkkkkk..","......kggk......","......kggk......","..y...kggk...y..",".......kk.......",".....y....y.....","................"],"29":["................","......kkkk......",".....kNNNNk.....","....kNNNNNNk....","....kssssssk.kk.","....kskssskkkeek","....ksssskeeeek.",".....kkkkkkkek..","...kkGGGGGGkk...","..kGkGGGGGGkk...","..kskGGaaGGk....","...kkGGGGGGk....","....kGGGGGGk....","....kNNkkNNk....","....kNk..kNk....","....kkk..kkk...."]};
+const ARTURL={};
+(function(){const cv=document.createElement('canvas');cv.width=cv.height=16;const x=cv.getContext('2d');
+  for(const no in ART){x.clearRect(0,0,16,16);ART[no].forEach((r,yy)=>[...r].forEach((ch,xx)=>{if(ch!=='.'){x.fillStyle=PAL[ch];x.fillRect(xx,yy,1,1)}}));ARTURL[no]=cv.toDataURL();}
+})();
+/* ---------- 状態 ---------- */
+let G=null, UI={sheet:null,pick:null,modal:null}, uidN=0;
+const $=id=>document.getElementById(id);
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
+const me=()=>G.p[0], cpu=()=>G.p[1], cur=()=>G.p[G.cur];
+const opp=p=>p===G.p[0]?G.p[1]:G.p[0];
+const atkOf=m=>(m.swapped?m.c.def:m.c.atk)+m.tmp;
+const defOf=m=>m.swapped?m.c.atk:m.c.def;
+const ownerOf=m=>G.p.find(p=>p.field.includes(m));
+const myTurn=()=>G&&!G.over&&G.cur===0;
+function newPlayer(name,isCpu,deck){
+  const cards=[];deck.list.forEach(([no,n])=>{for(let i=0;i<n;i++)cards.push({uid:++uidN,c:C[no]})});
+  return {name,cpu:isCpu,lp:4000,mana:0,deck:shuffle(cards),hand:[],field:[],grave:[],plan:[],bonus:0,deckName:deck.name};
+}
+function log(t,big){G.log.push(t);render();if(big)toast(t)}
+let toastT=null;
+function toast(t){const el=$('toast');el.textContent=t;el.hidden=false;el.classList.remove('show');void el.offsetWidth;el.classList.add('show');
+  clearTimeout(toastT);toastT=setTimeout(()=>{el.hidden=true},2200)}
+
+/* ---------- 進行 ---------- */
+function startGame(deckIdx){
+  G={p:[newPlayer('あなた',false,DECKS[0]),newPlayer('CPU',true,DECKS[0])],cur:Math.random()<.5?0:1,turn:0,phase:'main',busy:false,over:false,log:[],shownLp:[4000,4000]};
+  G.p.forEach(p=>{for(let i=0;i<5;i++)p.hand.push(p.deck.pop())});
+  closeAll();
+  log(`${G.p[G.cur].name}の先攻（先攻1ターン目は攻撃できず、マナは8）`);
+  startTurn();
+}
+async function startTurn(){
+  G.turn++;const p=cur();
+  p.mana=(p.plan.length?p.plan.shift():10)+p.bonus-(G.turn===1?2:0);p.bonus=0;
+  G.phase='main';p.field.forEach(m=>m.attacked=false);
+  log(`ターン${G.turn}：${p.name}のターン（マナ${p.mana}）`);
+  draw(p,1);
+  if(G.over)return;
+  render();
+  if(p.cpu){G.busy=true;render();await cpuTurn();}
+}
+function endTurn(){
+  if(G.over)return;
+  G.p.forEach(p=>p.field.forEach(m=>{m.tmp=0;m.swapped=false}));
+  G.phase='end';
+  G.cur^=1;startTurn();
+}
+function draw(p,n){
+  for(let i=0;i<n;i++){
+    if(!p.deck.length){log(`${p.name}のデッキが無くなった`);return finish(opp(p));}
+    p.hand.push(p.deck.pop());
+  }
+  if(n>1||G.turn>0)render();
+}
+function checkOver(){
+  const dead=G.p.find(p=>p.lp<=0);
+  if(dead)finish(opp(dead));
+  return G.over;
+}
+function finish(winner){
+  if(G.over)return;G.over=true;G.winner=winner;G.busy=false;render();
+  const win=winner===me();
+  try{const k='sukima_cbRec',r=JSON.parse(localStorage.getItem(k)||'{"w":0,"l":0}');win?r.w++:r.l++;localStorage.setItem(k,JSON.stringify(r))}catch(e){}
+  modal(`<div class="result" style="color:${win?'var(--ok)':'var(--danger)'}">${win?'勝利':'敗北'}</div>
+    <p class="note" style="text-align:center">あなた ${Math.max(0,me().lp)} ／ CPU ${Math.max(0,cpu().lp)}</p>`,
+    [{label:'もう一度遊ぶ',v:'again',cls:'mana'}]).then(()=>showStart());
+}
+
+/* ---------- 召喚 ---------- */
+async function summon(p,inst,pos,tribs=[]){
+  const c=inst.c;
+  for(const t of tribs){
+    p.field.splice(p.field.indexOf(t),1);p.grave.push(t.c);
+    log(`${p.name}：${t.c.name}を生け贄に`);
+    if(t.c.fx==='fairy'){draw(p,1);log(`小さな妖精の効果：${p.name}は1枚引いた`);}
+  }
+  p.mana-=c.mana;p.hand.splice(p.hand.indexOf(inst),1);
+  const m={uid:inst.uid,c,pos,summoned:G.turn,posTurn:0,attacked:false,tmp:0,swapped:false};
+  p.field.push(m);
+  log(`${p.name}：${c.name}を${tribs.length?'アドバンス':''}召喚（${pos==='atk'?'攻撃':'守備'}表示）`);
+  await sleep(250);
+  if(c.fx==='scout'){if(p.lp<opp(p).lp){draw(p,2);log(`逆境の見張り番：${p.name}は2枚引いた`,true);}else log('逆境の見張り番：ライフが相手より少なくないため効果なし');}
+  if(c.fx==='priest'){p.lp+=500;log(`癒しの僧侶：${p.name}のライフ+500`);}
+  if(c.fx==='bird')await birdEffect(p);
+  if(c.fx==='beast'){
+    const ds=opp(p).field.filter(x=>x.pos==='def');
+    if(ds.length){
+      const t=p.cpu?ds.sort((a,b)=>defOf(b)-defOf(a))[0]:await pick('攻撃表示にする相手モンスターを選ぶ',(x,o)=>o!==p&&x.pos==='def',false);
+      if(t){t.pos='atk';log(`雷の魔獣：${t.c.name}を攻撃表示に`);}
+    }
+  }
+  render();
+}
+async function birdEffect(p){
+  if(!p.deck.length)return;
+  const top=p.deck[p.deck.length-1];
+  let bottom;
+  if(p.cpu){bottom=!(top.c.kind==='m'&&top.c.atk>=1300)&&top.c.fx!=='destroy';}
+  else{
+    bottom=(await modal(`<h3>伝令の鳥</h3><p class="fx">デッキの一番上は「${top.c.name}」です。</p><p class="note">${top.c.text}</p>`,
+      [{label:'一番上に残す',v:'keep'},{label:'一番下に置く',v:'bottom',cls:'ghost'}]))==='bottom';
+  }
+  if(bottom){p.deck.unshift(p.deck.pop());}
+  log(`伝令の鳥：${p.name}はデッキの一番上を${bottom?'下に置いた':'そのままにした'}`);
+}
+function destroy(m,why){
+  const o=ownerOf(m);if(!o)return;
+  o.field.splice(o.field.indexOf(m),1);o.grave.push(m.c);
+  log(`${o.name}の${m.c.name}が破壊された${why?'（'+why+'）':''}`,why==='雷撃');
+  if(m.c.fx==='lamp'){o.bonus+=1;log(`灯りのランプ：${o.name}の次のターンのマナ+1`);}
+}
+
+/* ---------- 魔法 ---------- */
+async function castSpell(p,inst,target){
+  const c=inst.c;p.mana-=c.mana;p.hand.splice(p.hand.indexOf(inst),1);p.grave.push(c);
+  log(`${p.name}：「${c.name}」を発動${target?'（対象：'+target.c.name+'）':''}`);
+  await sleep(300);
+  if(await askNegate(opp(p),c)){render();return false;}
+  if(c.fx==='atk300'||c.fx==='atk500'){if(ownerOf(target)){const b=atkOf(target);target.tmp+=c.fx==='atk300'?300:500;log(`${target.c.name}の攻撃力 ${b} → ${atkOf(target)}（このターンのみ）`,true);}}
+  else if(c.fx==='swap'){if(ownerOf(target)){target.swapped=!target.swapped;log(`${target.c.name}の攻守が逆転：攻${atkOf(target)}／守${defOf(target)}（このターンのみ）`,true);}}
+  else if(c.fx==='destroy'){if(ownerOf(target))destroy(target,'雷撃');}
+  else if(c.fx==='manaUp'){p.plan=[15,5];log(`${p.name}の次のターンのマナは15、その次は5`,true);}
+  else if(c.fx==='draw2'){draw(p,2);log(`${p.name}はカードを2枚引いた`,true);}
+  else if(c.fx==='heal'){p.lp+=1000;log(`${p.name}のライフ+1000`,true);}
+  p.field.filter(m=>m.c.fx==='scholar').forEach(m=>{m.tmp+=300;log(`魔導書の学徒：攻撃力+300`)});
+  render();return true;
+}
+const NEG_BUFF=['atk300','atk500','swap'];
+async function askNegate(r,spell){
+  const opts=r.hand.filter(h=>(h.c.fx==='negAll'&&r.mana>=h.c.mana)||(h.c.fx==='negBuff'&&r.mana>=h.c.mana&&NEG_BUFF.includes(spell.fx)));
+  if(!opts.length)return false;
+  let use=null;
+  if(r.cpu){
+    const harmful=['destroy','swap','atk500','atk300','manaUp'].includes(spell.fx);
+    if(harmful&&(spell.fx!=='atk300'||Math.random()<.6))use=opts.sort((a,b)=>a.c.mana-b.c.mana)[0];
+  }else{
+    const v=await modal(`<h3>相手の魔法</h3><p class="fx">CPUが「${spell.name}」を発動しました。</p><p class="note">${spell.text}<br>あなたの残りマナ：${r.mana}</p>`,
+      [...uniq(opts).map(h=>({label:`「${h.c.name}」で無効にする（マナ${h.c.mana}）`,v:h.uid,cls:'mana'})),{label:'止めない',v:'no',cls:'ghost'}]);
+    use=opts.find(h=>h.uid===v)||null;
+  }
+  if(!use)return false;
+  r.mana-=use.c.mana;r.hand.splice(r.hand.indexOf(use),1);r.grave.push(use.c);
+  log(`${r.name}が「${use.c.name}」で「${spell.name}」を無効にした`,true);
+  return true;
+}
+function uniq(hs){const s=new Set();return hs.filter(h=>!s.has(h.c.no)&&s.add(h.c.no))}
+async function askBarrier(r,att,tgt,dmgEst){
+  const card=r.hand.find(h=>h.c.fx==='stop'&&r.mana>=h.c.mana);
+  if(!card)return false;
+  let yes;
+  if(r.cpu){yes=dmgEst.lethal||dmgEst.lose>=1300||dmgEst.lp>=1200;}
+  else{
+    yes=(await modal(`<h3>攻撃宣言</h3><p class="fx">CPUの${att.c.name}（攻撃力${atkOf(att)}）が${tgt?tgt.c.name+'を':'あなたに直接'}攻撃しようとしています。</p><p class="note">あなたの残りマナ：${r.mana}</p>`,
+      [{label:`「守りの結界」で止める（マナ${card.c.mana}）`,v:'y',cls:'mana'},{label:'止めない',v:'n',cls:'ghost'}]))==='y';
+  }
+  if(!yes)return false;
+  r.mana-=card.c.mana;r.hand.splice(r.hand.indexOf(card),1);r.grave.push(card.c);
+  log(`${r.name}が「守りの結界」で攻撃を止めた`,true);return true;
+}
+
+/* ---------- 戦闘 ---------- */
+function validTargets(d){const s=d.field.filter(m=>m.c.fx==='shield'&&m.pos==='def');return s.length?s:d.field}
+function battlePreview(m,t){
+  const a=atkOf(m)+(t&&m.c.fx==='hunter'&&atkOf(t)>=1500?500:0);
+  if(!t)return{a,kill:false,die:false,dmgD:a,dmgA:0};
+  if(t.pos==='atk'){
+    const ta=atkOf(t)+(t.c.fx==='hunter'&&atkOf(m)>=1500?500:0);
+    return{a,ta,kill:a>=ta,die:a<=ta,dmgD:Math.max(0,a-ta),dmgA:Math.max(0,ta-a)};
+  }
+  const td=defOf(t);
+  return{a,td,kill:a>td,die:false,dmgD:0,dmgA:Math.max(0,td-a)};
+}
+async function attack(p,m,t){
+  const d=opp(p);m.attacked=true;
+  log(`${p.name}：${m.c.name}で${t?t.c.name+'を':'直接'}攻撃`);
+  const pv=battlePreview(m,t);
+  if(await askBarrier(d,m,t,{lethal:pv.dmgD>=d.lp,lose:t&&pv.kill?atkOf(t)+defOf(t):0,lp:pv.dmgD})){render();return;}
+  if(!t){d.lp-=pv.dmgD;log(`直接攻撃！${d.name}に${pv.dmgD}ダメージ`,true);}
+  else{
+    if(pv.dmgD){d.lp-=pv.dmgD;log(`${d.name}に${pv.dmgD}ダメージ`);}
+    if(pv.dmgA){p.lp-=pv.dmgA;log(`${p.name}に${pv.dmgA}ダメージ`);}
+    if(t.pos==='def'&&!pv.kill&&!pv.dmgA)log('どちらも破壊されなかった');
+    if(pv.kill){destroy(t,'戦闘');if(m.c.fx==='sword'){draw(p,1);log('剣士の効果：1枚引いた');}}
+    if(pv.die)destroy(m,'戦闘');
+  }
+  render();checkOver();
+}
+
+/* ---------- CPU ---------- */
+function cpuReserve(p){
+  const rs=p.hand.filter(h=>h.c.timing==='opp').map(h=>h.c.mana);
+  return rs.length?Math.max(...rs):0;
+}
+function cpuPos(p,c){
+  if(c.atk<c.def)return 'def';
+  const threat=Math.max(0,...opp(p).field.filter(x=>x.pos==='atk').map(atkOf));
+  return threat>=c.atk||c.atk<=500?'def':'atk';
+}
+async function cpuTurn(){
+  const g=G,p=cur(),d=opp(p),dead=()=>G!==g||G.over;await sleep(700);if(dead())return;
+  for(let guard=0;guard<12&&!dead();guard++){
+    const res=cpuReserve(p),av=p.mana-res,has=fx=>p.hand.find(h=>h.c.fx===fx&&p.mana>=h.c.mana);
+    let h;
+    if(p.lp<=2500&&(h=has('heal'))&&av>=3){await castSpell(p,h);await sleep(500);continue;}
+    if((h=has('destroy'))&&av>=h.c.mana&&d.field.length){
+      const t=[...d.field].sort((a,b)=>(atkOf(b)+defOf(b)/2)-(atkOf(a)+defOf(a)/2))[0];
+      if(atkOf(t)>=1500||defOf(t)>=1600){await castSpell(p,h,t);await sleep(500);continue;}
+    }
+    const mons=p.hand.filter(x=>x.c.kind==='m').sort((a,b)=>(b.c.atk+b.c.def)-(a.c.atk+a.c.def));
+    let did=false;
+    for(const x of mons){
+      if(x.c.mana>av)continue;
+      if(x.c.trib){
+        const fod=p.field.filter(f=>!f.c.trib&&(f.c.cls==='素材'||atkOf(f)<=1000)&&f.c.cls!=='壁').sort((a,b)=>(a.c.atk+a.c.def)-(b.c.atk+b.c.def));
+        if(fod.length>=x.c.trib){await summon(p,x,cpuPos(p,x.c),fod.slice(0,x.c.trib));did=true;break;}
+      }else if(p.field.length<5){await summon(p,x,cpuPos(p,x.c));did=true;break;}
+    }
+    if(did){await sleep(500);continue;}
+    if((h=has('draw2'))&&av>=3&&p.hand.length<=5){await castSpell(p,h);await sleep(500);continue;}
+    if((h=has('manaUp'))&&av>=3&&G.turn>=3&&p.hand.some(x=>x.c.trib)){await castSpell(p,h);await sleep(500);continue;}
+    break;
+  }
+  if(dead())return;
+  const threat=Math.max(0,...d.field.filter(x=>x.pos==='atk').map(atkOf));
+  p.field.forEach(m=>{
+    if(m.summoned===G.turn||m.posTurn===G.turn)return;
+    if(m.pos==='def'&&m.c.atk>=m.c.def&&atkOf(m)>threat){m.pos='atk';m.posTurn=G.turn;log(`CPU：${m.c.name}を攻撃表示に`);}
+    else if(m.pos==='atk'&&atkOf(m)<threat&&defOf(m)>atkOf(m)){m.pos='def';m.posTurn=G.turn;log(`CPU：${m.c.name}を守備表示に`);}
+  });
+  if(G.turn>1){
+    // 壁＋あべこべの鏡：壁を攻撃表示にして入れ替え、攻撃に使う
+    const sw=p.hand.find(h=>h.c.fx==='swap'&&h.c.mana<=p.mana);
+    const wall=sw&&p.field.find(m=>m.pos==='def'&&m.c.def>=1600&&m.c.atk<=800&&m.summoned!==G.turn&&m.posTurn!==G.turn);
+    if(wall){
+      const pw=wall.c.def,tg=validTargets(d);
+      const worth=!d.field.length?pw>=Math.min(1500,d.lp):tg.some(t=>(t.pos==='atk'?pw>atkOf(t):pw>defOf(t))&&atkOf(t)>=1200);
+      if(worth&&(d.field.length||pw>=d.lp||p.lp>1500)){
+        wall.pos='atk';wall.posTurn=G.turn;log(`${p.name}：${wall.c.name}を攻撃表示に`);await sleep(300);
+        await castSpell(p,sw,wall);await sleep(400);
+      }
+    }
+    if(dead())return;
+    G.phase='battle';render();await sleep(600);
+    const atks=p.field.filter(m=>m.pos==='atk'&&atkOf(m)>0).sort((a,b)=>atkOf(b)-atkOf(a));
+    for(const m of atks){
+      if(dead()||!p.field.includes(m)||m.attacked)continue;
+      if(!d.field.length){await attack(p,m,null);await sleep(600);continue;}
+      const tg=validTargets(d);
+      const good=t=>{const v=battlePreview(m,t);return v.kill&&(!v.die||atkOf(t)>=atkOf(m))};
+      let t=tg.filter(good).sort((a,b)=>atkOf(b)-atkOf(a))[0];
+      if(!t){
+        const av=p.mana-cpuReserve(p);
+        for(const fx of ['atk300','atk500']){
+          const b=p.hand.find(h=>h.c.fx===fx&&h.c.mana<=av);if(!b)continue;
+          const add=fx==='atk300'?300:500;
+          const tt=tg.find(x=>{m.tmp+=add;const ok=good(x);m.tmp-=add;return ok});
+          if(tt){await castSpell(p,b,m);await sleep(400);if(good(tt))t=tt;break;}
+        }
+        if(!t){
+          const sw=p.hand.find(h=>h.c.fx==='swap'&&h.c.mana<=av);
+          const wall=sw&&tg.find(x=>x.pos==='def'&&x.c.atk<atkOf(m));
+          if(wall){await castSpell(p,sw,wall);await sleep(400);if(d.field.includes(wall)&&good(wall))t=wall;}
+        }
+      }
+      if(t&&d.field.includes(t)){await attack(p,m,t);await sleep(600);}
+    }
+  }
+  if(dead())return;
+  await sleep(400);G.busy=false;endTurn();
+}
+
+/* ---------- 入力 ---------- */
+function pick(msg,filter,cancelable=true,count=1,multi=false){
+  return new Promise(res=>{UI.pick={msg,filter,count,multi,sel:[],cancelable,res};closeSheet();render();});
+}
+function endPick(v){const pk=UI.pick;UI.pick=null;render();pk.res(v)}
+function onFieldTap(owner,m){
+  if(UI.pick){
+    if(!UI.pick.filter(m,owner))return;
+    if(!UI.pick.multi)return endPick(m);
+    const s=UI.pick.sel,i=s.indexOf(m);i>=0?s.splice(i,1):s.length<UI.pick.count&&s.push(m);if(s.length===UI.pick.count)return endPick([...s]);render();return;
+  }
+  const acts=[];
+  if(owner===me()&&myTurn()&&!G.busy){
+    if(G.phase==='main'){
+      const ok=m.summoned!==G.turn&&m.posTurn!==G.turn;
+      acts.push({label:m.pos==='atk'?'守備表示にする':'攻撃表示にする',dis:!ok,note:ok?'':'召喚したターン・変更済みのターンは変更できません',
+        fn:()=>{m.pos=m.pos==='atk'?'def':'atk';m.posTurn=G.turn;log(`あなた：${m.c.name}を${m.pos==='atk'?'攻撃':'守備'}表示に`);}});
+    }
+    if(G.phase==='battle'){
+      const ok=m.pos==='atk'&&!m.attacked;
+      acts.push({label:'攻撃する',cls:'red',dis:!ok,note:ok?'':(m.attacked?'このターンはもう攻撃しました':'守備表示では攻撃できません'),fn:()=>humanAttack(m)});
+    }
+  }
+  showCard(m.c,m,acts);
+}
+function onHandTap(inst){
+  if(UI.pick)return;
+  const p=me(),c=inst.c,acts=[];
+  const canAct=myTurn()&&!G.busy;
+  if(c.kind==='m'){
+    const fieldOk=c.trib?p.field.length>=c.trib:p.field.length<5;
+    const manaOk=p.mana>=c.mana, phaseOk=canAct&&G.phase==='main';
+    const why=!phaseOk?'自分のメインフェイズに召喚できます':!manaOk?'マナが足りません':!fieldOk?(c.trib?`生け贄にするモンスターが${c.trib}体必要です`:'場がいっぱいです'):'';
+    const lbl=c.trib?'アドバンス召喚':'召喚';
+    acts.push({label:`攻撃表示で${lbl}`,dis:!!why,fn:()=>humanSummon(inst,'atk')});
+    acts.push({label:`守備表示で${lbl}`,dis:!!why,cls:'ghost',fn:()=>humanSummon(inst,'def'),note:why});
+  }else if(c.timing==='opp'){
+    acts.push({label:'相手ターン用のカード',dis:true,note:'相手が魔法や攻撃を使ったとき、マナが足りていれば使うか確認されます'});
+  }else{
+    const phaseOk=canAct&&(G.phase==='main'||G.phase==='battle');
+    const tgtOk=c.tgt==='own'?p.field.length:c.tgt==='opp'?cpu().field.length:c.tgt==='any'?p.field.length+cpu().field.length:1;
+    const why=!phaseOk?'自分のターンに使えます':p.mana<c.mana?'マナが足りません':!tgtOk?'対象にできるモンスターがいません':'';
+    acts.push({label:`使う（マナ${c.mana}）`,cls:'mana',dis:!!why,note:why,fn:()=>humanSpell(inst)});
+  }
+  showCard(c,null,acts);
+}
+async function guarded(fn){G.busy=true;render();try{await fn()}finally{if(!G.over&&G.cur===0)G.busy=false;render();}}
+function humanSummon(inst,pos){guarded(async()=>{
+  let tr=[];
+  if(inst.c.trib){
+    G.busy=false;
+    tr=await pick(`生け贄にするモンスターを${inst.c.trib}体選ぶ`,(m,o)=>o===me(),true,inst.c.trib,true);
+    G.busy=true;if(!tr)return;
+  }
+  await summon(me(),inst,pos,tr);
+})}
+function humanSpell(inst){guarded(async()=>{
+  const c=inst.c;let t=null;
+  if(c.tgt){
+    G.busy=false;
+    const f=c.tgt==='own'?(m,o)=>o===me():c.tgt==='opp'?(m,o)=>o===cpu():()=>true;
+    t=await pick(`「${c.name}」の対象を選ぶ`,f);G.busy=true;if(!t)return;
+  }
+  await castSpell(me(),inst,t);checkOver();
+})}
+function humanAttack(m){guarded(async()=>{
+  const d=cpu();let t=null;
+  if(d.field.length){
+    G.busy=false;
+    const tg=validTargets(d);
+    t=await pick(tg.length<d.field.length?'攻撃対象を選ぶ（盾の騎士しか攻撃できません）':'攻撃対象を選ぶ',(x,o)=>o===d&&tg.includes(x));
+    G.busy=true;if(!t)return;
+  }
+  await attack(me(),m,t);
+})}
+
+/* ---------- 表示 ---------- */
+function esc(s){return String(s)}
+const TIER={素材:'t-mat',通常:'t-norm',上級:'t-up',壁:'t-wall'};
+function cardHTML(c,m,cls=''){
+  const badge=m&&m.pos==='def'?'<span class="badge">守</span>':c.lim===1?'<span class="badge lim">制限</span>':'';
+  const buff=m&&(m.tmp||m.swapped)?`<span class="buff">${m.swapped?'逆転':''}${m.tmp?'+'+m.tmp:''}</span>`:'';
+  const win=`<div class="win"><img class="art" src="${ARTURL[c.no]}" alt="">${badge}${buff}</div>`;
+  if(c.kind==='m'){
+    const a=m?atkOf(m):c.atk,d=m?defOf(m):c.def,up=m&&(m.tmp||m.swapped);
+    return `<div class="mc ${TIER[c.cls]||'t-norm'} ${m?(m.pos==='def'?'def':'atkpos'):''} ${cls}" tabindex="0">
+      <div class="cost">${c.mana}</div><div class="nm">${c.name}</div>${win}
+      <div><div class="tag">${c.cls}${c.trib?'・生贄'+c.trib:''}</div>
+      <div class="st"><span class="a ${up?'up':''}"><b>攻</b>${a}</span><span class="d"><b>守</b>${d}</span></div></div></div>`;
+  }
+  return `<div class="mc spell ${c.timing==='opp'?'opp':''} ${cls}" tabindex="0">
+    <div class="cost">${c.mana}</div><div class="nm">${c.name}</div>${win}
+    <div class="tag">${c.timing==='opp'?'相手ターン':'魔法'}</div></div>`;
+}
+function railHTML(p){
+  const gems=Array.from({length:Math.max(10,p.mana)},(_,i)=>`<i class="gem ${i<p.mana?(i>=10?'on extra':'on'):''}"></i>`).join('');
+  const pct=Math.max(0,Math.min(100,p.lp/40)),lv=pct>50?'':pct>25?'mid':'low';
+  const active=G.p[G.cur]===p&&!G.over;
+  return `<div class="who"><b>${p.name}</b>${active?'<span class="turn">ターン中</span>':''}</div>
+    <div class="lpbox"><span class="lp"><small>LP</small>${Math.max(0,p.lp)}</span><span class="lpbar"><i class="${lv}" style="width:${pct}%"></i></span></div>
+    <div class="mana-box"><span class="gems">${gems}</span><span class="mana-num">${p.mana}<small>マナ</small></span></div>
+    <div class="counts"><span class="cnt"><i></i>手札 <b>${p.hand.length}</b></span><span class="cnt deck"><i></i>山札 <b>${p.deck.length}</b></span></div>`;
+}
+function paintRail(id,i){
+  const p=G.p[i],r=$(id);
+  if(!r.querySelector('.rb'))r.innerHTML='<div class="rb"></div><div class="rfx"></div>';
+  r.querySelector('.rb').innerHTML=railHTML(p);
+  r.classList.toggle('active',G.cur===i&&!G.over);
+  const prev=G.shownLp[i];
+  if(prev!==p.lp){
+    const diff=p.lp-prev;G.shownLp[i]=p.lp;
+    const f=document.createElement('span');f.className='float '+(diff<0?'hit':'heal');f.textContent=(diff>0?'+':'')+diff;
+    r.querySelector('.rfx').appendChild(f);setTimeout(()=>f.remove(),1300);
+    if(diff<0){r.classList.remove('shake');void r.offsetWidth;r.classList.add('shake');}
+  }
+}
+function fieldHTML(p){
+  let h='';
+  for(let i=0;i<5;i++){
+    const m=p.field[i];let cls='';
+    if(m){
+      if(UI.pick){cls=UI.pick.filter(m,p)?(UI.pick.sel.includes(m)?'picked':'can'):'dim';}
+      else if(p===me()&&G.phase==='battle'&&myTurn()&&(m.attacked||m.pos==='def'))cls='done';
+    }
+    h+=`<div class="slot" data-o="${G.p.indexOf(p)}" data-i="${i}">${m?cardHTML(m.c,m,cls):''}</div>`;
+  }
+  return h;
+}
+function render(){
+  if(!G)return;
+  paintRail('railCpu',1);paintRail('railMe',0);
+  $('fieldCpu').innerHTML=fieldHTML(cpu());$('fieldMe').innerHTML=fieldHTML(me());
+  const p=me();
+  $('hand').innerHTML=p.hand.map((h,i)=>{
+    const c=h.c;const usable=c.kind==='m'?p.mana>=c.mana:c.timing==='self'&&p.mana>=c.mana;
+    return `<div data-h="${i}" style="display:contents">${cardHTML(c,null,myTurn()&&!usable?'cant':'')}</div>`}).join('');
+  const ph=G.over?'終了':G.phase==='main'?'メイン':G.phase==='battle'?'バトル':'エンド';
+  let center=`<span class="turninfo">ターン${G.turn}</span><span class="phases">${[['main','メイン'],['battle','バトル'],['end','エンド']].map(([k,l])=>`<b class="${G.phase===k&&!G.over?'on':''}">${l}</b>`).join('')}</span>`;
+  if(UI.pick){
+    const pk=UI.pick;
+    center+=`<div class="btns">${pk.multi?`<button id="bOk" class="mana" ${pk.sel.length<pk.count?'disabled':''}>決定 ${pk.sel.length}/${pk.count}</button>`:''}${pk.cancelable?'<button id="bCancel" class="ghost">やめる</button>':''}</div>
+      <div class="prompt">${pk.msg}</div>`;
+  }else if(myTurn()&&!G.busy){
+    center+=`<div class="btns">${G.phase==='main'?`<button id="bBattle" class="red" ${G.turn===1?'disabled':''}>バトルへ</button>`:''}<button id="bEnd">ターン終了</button></div>`;
+  }else if(!G.over){center+=`<div class="btns"><button class="ghost" disabled>CPU行動中…</button></div>`;}
+  center+=`<div class="logline" id="logline">${G.log.slice(-2).join('　／　')}</div><button class="ghost" id="logbtn" style="padding:4px 10px;font-size:12px">ログ</button><button class="ghost" id="quitbtn" style="padding:4px 10px;font-size:12px">やめる</button>`;
+  $('center').innerHTML=center;
+}
+document.addEventListener('click',e=>{
+  if(!G)return;
+  const t=e.target;
+  if(t.closest('#layer'))return;
+  if(t.id==='bBattle'){G.phase='battle';log('バトルフェイズ');return}
+  if(t.id==='bEnd'){log('あなた：ターン終了');endTurn();return}
+  if(t.id==='bCancel')return endPick(null);
+  if(t.id==='bOk')return endPick([...UI.pick.sel]);
+  if(t.closest('#logline')||t.id==='logbtn')return showLog();
+  if(t.id==='quitbtn'){const g=G;modal('<h3>対戦をやめますか？</h3><p class="note">この対戦は記録されません。</p>',[{label:'やめる',v:'y',cls:'red'},{label:'続ける',v:'n',cls:'ghost'}]).then(v=>{if(v==='y'&&G===g){g.over=true;showStart()}else render()});return}
+  const s=t.closest('.slot');
+  if(s){const o=G.p[+s.dataset.o],m=o.field[+s.dataset.i];if(m)onFieldTap(o,m);return}
+  const h=t.closest('[data-h]');
+  if(h){const inst=me().hand[+h.dataset.h];if(inst)onHandTap(inst);}
+});
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.classList.contains('mc'))e.target.click()});
+
+/* ---------- シート・モーダル ---------- */
+function showCard(c,m,acts){
+  const stats=c.kind==='m'?`<div class="stats"><span class="a">攻 ${m?atkOf(m):c.atk}</span><span class="d">守 ${m?defOf(m):c.def}</span></div>`:'';
+  const meta=`<div class="meta"><span class="chip m">マナ ${c.mana}</span><span class="chip">${c.kind==='m'?c.cls+(c.trib?'・生け贄'+c.trib+'体':''):c.timing==='opp'?'相手ターン魔法':'魔法'}</span>
+    ${m?`<span class="chip">${m.pos==='atk'?'攻撃表示':'守備表示'}</span>`:''}<span class="chip">デッキに${c.lim}枚まで</span></div>`;
+  const tmp=m&&(m.tmp||m.swapped)?`<p class="note">このターンの変化：${m.swapped?'攻守逆転 ':''}${m.tmp?'攻撃力+'+m.tmp:''}</p>`:'';
+  const actHTML=acts.map((a,i)=>`<button data-a="${i}" class="${a.cls||''}" ${a.dis?'disabled':''}>${a.label}</button>${a.note?`<p class="note">${a.note}</p>`:''}`).join('');
+  $('layer').innerHTML=`<div class="scrim" id="scrim"><div class="sheet big"><div class="head"><img class="bigart" src="${ARTURL[c.no]}" alt=""><h3>${c.name}</h3></div>${meta}${stats}<p class="fx">${c.text}</p>${tmp}
+    <div class="acts">${actHTML}<button class="ghost" data-a="x">閉じる</button></div></div></div>`;
+  UI.sheet=acts;
+  $('scrim').onclick=e=>{
+    if(e.target.id==='scrim')return closeSheet();
+    const b=e.target.closest('[data-a]');if(!b)return;
+    const a=b.dataset.a;closeSheet();
+    if(a!=='x'){const ac=acts[+a];ac.fn&&ac.fn();render();}
+  };
+}
+function closeSheet(){if(UI.sheet){UI.sheet=null;$('layer').innerHTML='';}}
+function closeAll(){UI.sheet=null;UI.pick=null;$('layer').innerHTML='';}
+function modal(html,buttons){
+  closeSheet();
+  return new Promise(res=>{
+    $('layer').innerHTML=`<div class="scrim mid"><div class="modal">${html}<div class="acts">${buttons.map((b,i)=>`<button data-m="${i}" class="${b.cls||''}">${b.label}</button>`).join('')}</div></div></div>`;
+    $('layer').querySelector('.acts').onclick=e=>{const b=e.target.closest('[data-m]');if(!b)return;$('layer').innerHTML='';res(buttons[+b.dataset.m].v)};
+  });
+}
+function showLog(){
+  if(UI.pick)return;
+  showCardless(`<h3 style="font-family:var(--display);font-weight:400;margin:0">ログ</h3><div class="loglist">${G.log.map(l=>`<div>${l}</div>`).join('')}</div>`);
+}
+function showCardless(html){
+  $('layer').innerHTML=`<div class="scrim" id="scrim"><div class="sheet">${html}<button class="ghost" id="cl">閉じる</button></div></div>`;
+  UI.sheet=[];$('scrim').onclick=e=>{if(e.target.id==='scrim'||e.target.id==='cl')closeSheet()};
+}
+function showStart(){
+  G=null;['railCpu','fieldCpu','center','fieldMe','railMe','hand'].forEach(id=>$(id).innerHTML='');
+  $('layer').innerHTML=`<div class="scrim mid"><div class="modal">
+    <h3>カードバトル 試作版</h3>
+    <ul class="rules">
+      <li>ライフ4000・デッキ30枚・初期手札5枚。CPUと1対1で対戦</li>
+      <li>マナは自分のターン開始時に10まで回復。残したマナは相手ターンの無効化や守りの結界に使える</li>
+      <li>メイン → バトル → 終了（メイン2なし）。先攻1ターン目は攻撃不可、マナは8</li>
+      <li>上級はアドバンス召喚（生け贄＋マナ）。表示変更は1ターン1回、召喚ターンは不可</li>
+      <li>カードをタップすると詳細と操作が出ます</li>
+    </ul>
+    <div class="deckpick"><button data-d="0" class="mana"><b>対戦開始</b><span>${DECKS[0].desc}</span></button></div>
+    <p class="note">あなたとCPUは同じスタンダードデッキ（30枚：モンスター20・魔法10）を使います。</p>
+    <a class="backlink" href="./">‹ すきま脳トレ箱に戻る</a></div></div>`;
+  $('layer').querySelector('.deckpick').onclick=e=>{const b=e.target.closest('[data-d]');if(b)startGame(+b.dataset.d)};
+}
+showStart();
+</script>
+
+<script>if("serviceWorker" in navigator&&location.protocol.startsWith("http")){navigator.serviceWorker.register("sw.js").catch(()=>{})}</script>
+</body>
+</html>
