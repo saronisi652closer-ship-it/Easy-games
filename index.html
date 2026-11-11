@@ -99,7 +99,7 @@ const ICON={"sudoku": "<svg viewBox=\"0 0 56 56\" aria-hidden=\"true\"><rect x=\
 const IKN={egg:'タマゴ',puni:'プニ',puniru:'プニル',koron:'コロン',moyan:'モヤン',garudon:'ガルドン',fuwarin:'フワリン',buden:'ブーデン',keketto:'ケケット',garudrago:'ガルドラゴ',sorafuwa:'ソラフワ',gorodon:'ゴロドン',yamikeke:'ヤミケケ'};
 function stat(id){const g=k=>Save.get(k);
   try{
-  if(id==='sudoku'){const b=g('sdBest')||{};const SH={easy:'易',normal:'普',hard:'難'};return 'ベスト '+['easy','normal','hard'].map(k=>`${SH[k]} ${b[k]!=null?fmt(b[k]):'--:--'}`).join('　')}
+  if(id==='sudoku'){const b=g('sdBest')||{};const SH={easy:'易',normal:'普',hard:'難',oni:'鬼'};return 'ベスト '+['easy','normal','hard','oni'].map(k=>`${SH[k]} ${b[k]!=null?fmt(b[k]):'--:--'}`).join(' ')}
   if(id==='othello'){const r=g('otRec')||{};let w=0,l=0;for(const k in r){w+=r[k].w;l+=r[k].l}return `通算 ${w}勝${l}敗`+(r.hard?`（つよい ${r.hard.w}勝）`:'')}
   if(id==='slither'){const b=g('slBest')||{};return 'ベスト '+[5,6,7].map(n=>`${n}×${n} ${b[n]!=null?fmt(b[n]):'--:--'}`).join('　')}
   if(id==='picross')return `絵 ${(g('px_solved')||[]).length}/8・クリア ${g('px_count')||0}問`;
