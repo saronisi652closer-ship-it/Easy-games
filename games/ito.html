@@ -28,7 +28,7 @@
 <body>
 <div id="app">
   <section class="view" id="v-ito">
-    <header class="bar"><a class="back" href="../index.html">‹ 戻る</a><h2>糸通し</h2><span class="timer" id="it-best">ベスト 0本</span></header>
+    <header class="bar"><a class="back" href="../index.html">‹ 戻る</a><h2>糸通し</h2><button class="btn" id="pauseBtn" type="button">⏸</button><span class="timer" id="it-best">ベスト 0本</span></header>
     <div class="stage" style="padding-bottom:10px"><div class="it-wrap" id="it-wrap"><canvas id="it-cv"></canvas></div></div>
     <p class="rn-help">押すと上がり、離すと下がる（スペースキーでも可）</p>
     <div style="height:14px"></div>
@@ -118,7 +118,7 @@ function itDown(){
 function itEnter(){itBestTxt();requestAnimationFrame(()=>{itSize();if(!IT.needles||!IT.needles.length)itReset();itDraw();if(!IT.raf){IT.last=performance.now();IT.raf=requestAnimationFrame(itFrame)}})}
 function itLeave(){IT.hold=false;if(IT.state==='play')IT.state='paused'}
 
-
+document.getElementById('pauseBtn').onclick=()=>{itLeave()};
 document.addEventListener('visibilitychange',()=>{if(document.hidden)itLeave()});
 window.addEventListener('pagehide',()=>itLeave());
 itEnter();

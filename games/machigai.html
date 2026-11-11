@@ -28,7 +28,7 @@
 </head>
 <body>
 <div id="app">
-  <header class="bar"><a class="back" href="../index.html">‹ 戻る</a><h2>間違い探し</h2><span class="timer" id="time">00:00</span></header>
+  <header class="bar"><a class="back" href="../index.html">‹ 戻る</a><h2>間違い探し</h2><button class="btn" id="pause" type="button">⏸</button><span class="timer" id="time">00:00</span></header>
   <div class="opts">
     <div class="seg" id="diff" role="group" aria-label="難しさ"><button type="button" data-v="easy">かんたん</button><button type="button" data-v="normal">ふつう</button><button type="button" data-v="hard">むずかしい</button></div>
     <div class="found" id="found"></div>
@@ -293,12 +293,16 @@ function finish(){
 }
 $('#cA').addEventListener('pointerdown',tap);$('#cB').addEventListener('pointerdown',tap);
 $('#hint').onclick=()=>{if(!G||G.done)return;const d=G.diffs.find(d=>!d.found);if(!d)return;G.hints++;G.flash=d;draw();status();setTimeout(()=>{if(G.flash===d){G.flash=null;draw()}},1300)};
-$('#new').onclick=newGame;
+$('#new').onclick=()=>{setPause(false);newGame()};
+let paused=false;
+function setPause(v){paused=v;$('#pics').style.visibility=v?'hidden':'';$('#pause').textContent=v?'▶ 再開':'⏸';
+  if(v){clockStop();$('#msg').className='msg';$('#msg').textContent='一時停止中（▶ 再開で続きから）'}else{if(G&&!G.done)clockRun();if(G)status()}}
+$('#pause').onclick=()=>{if(!G||G.done)return;setPause(!paused)};
 for(const b of $('#diff').children)b.setAttribute('aria-pressed',String(b.dataset.v===diff));
 $('#diff').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;diff=b.dataset.v;store.set('diff',diff);for(const x of $('#diff').children)x.setAttribute('aria-pressed',String(x===b));newGame()});
 function fit(){const p=$('#pics').getBoundingClientRect();const h=(p.height-8)/2,w=Math.min(p.width,h*36/25);for(const id of ['#wA','#wB'])$(id).style.width=w+'px';draw()}
 new ResizeObserver(fit).observe($('#pics'));
-document.addEventListener('visibilitychange',()=>{if(document.hidden)clockStop();else if(G&&!G.done)clockRun()});
+document.addEventListener('visibilitychange',()=>{if(document.hidden)clockStop();else if(G&&!G.done&&!paused)clockRun()});
 newGame();Save.touch({game:'machigai'});
 
 });

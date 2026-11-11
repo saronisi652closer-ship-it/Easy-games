@@ -180,17 +180,34 @@ const SL={id:null,created:0,st:null,G:null,mode:1,pick:store.get('slSize','6'),c
   $('#sl-mline').addEventListener('click',()=>setMode(1));$('#sl-mx').addEventListener('click',()=>setMode(2));
   $('#sl-undo').addEventListener('click',()=>{const s=SL.st;if(!s||s.done||!s.hist.length)return;s.lines=s.hist.pop();slSave();slDraw()});
   $('#sl-reset').addEventListener('click',()=>{const s=SL.st;if(!s||s.done||!s.lines.some(x=>x))return;s.hist.push(s.lines.slice());s.lines.fill(0);slSave();slDraw()});
+  // タップ：一番近い辺を切り替え／点から点へなぞる：続けて線（または×）を引く
+  const geo=()=>{const rc=SL.cv.getBoundingClientRect(),n=SL.st.n,cs=rc.width/(n+1);return {rc,n,cs,m:cs/2}};
+  const vAt=(x,y,g)=>{const gx=Math.round((x-g.m)/g.cs),gy=Math.round((y-g.m)/g.cs);if(gx<0||gy<0||gx>g.n||gy>g.n)return null;
+    const d=Math.hypot(x-(g.m+gx*g.cs),y-(g.m+gy*g.cs));return {v:gy*(g.n+1)+gx,d,gx,gy}};
+  const edgeOf=(a,b)=>{const G=SL.G;for(const e of G.vertE[a]){const[p,q]=G.edgeV[e];if((p===a&&q===b)||(p===b&&q===a))return e}return -1};
+  let drag=null;
   SL.cv.addEventListener('pointerdown',e=>{const s=SL.st;if(!s||s.done)return;e.preventDefault();
-    const rc=SL.cv.getBoundingClientRect(),x=e.clientX-rc.left,y=e.clientY-rc.top;
-    const n=s.n,cs=rc.width/(n+1),m=cs/2,G=SL.G;
+    const g=geo(),x=e.clientX-g.rc.left,y=e.clientY-g.rc.top,G=SL.G;
+    const v=vAt(x,y,g);
+    if(v&&v.d<g.cs*.28){drag={v:v.v,mode:null,moved:false,snap:s.lines.slice()};try{SL.cv.setPointerCapture(e.pointerId)}catch(_){}return}
     let best=-1,bd=1e9;
     for(let ed=0;ed<G.E;ed++){const[a,b]=G.edgeV[ed];
-      const ax=m+(a%(n+1))*cs,ay=m+((a/(n+1))|0)*cs,bx=m+(b%(n+1))*cs,by=m+((b/(n+1))|0)*cs;
+      const ax=g.m+(a%(g.n+1))*g.cs,ay=g.m+((a/(g.n+1))|0)*g.cs,bx=g.m+(b%(g.n+1))*g.cs,by=g.m+((b/(g.n+1))|0)*g.cs;
       const d=Math.hypot(x-(ax+bx)/2,y-(ay+by)/2);if(d<bd){bd=d;best=ed}}
-    if(best<0||bd>cs*.5)return;
+    if(best<0||bd>g.cs*.5)return;
     s.hist.push(s.lines.slice());if(s.hist.length>300)s.hist.shift();
     const cur=s.lines[best];s.lines[best]=cur===SL.mode?0:SL.mode;Sfx.play('tap');
     slCheck();slSave();slDraw()});
+  SL.cv.addEventListener('pointermove',e=>{if(!drag)return;const s=SL.st,g=geo();
+    const v=vAt(e.clientX-g.rc.left,e.clientY-g.rc.top,g);if(!v||v.v===drag.v||v.d>g.cs*.4)return;
+    const a=drag.v,ax=a%(g.n+1),ay=(a/(g.n+1))|0;if(Math.abs(ax-v.gx)+Math.abs(ay-v.gy)!==1)return;
+    const ed=edgeOf(a,v.v);if(ed<0)return;
+    if(drag.mode===null)drag.mode=s.lines[ed]===SL.mode?0:SL.mode;
+    if(!drag.moved){s.hist.push(drag.snap);if(s.hist.length>300)s.hist.shift();drag.moved=true}
+    if(s.lines[ed]!==drag.mode){s.lines[ed]=drag.mode;Sfx.play('tap')}
+    drag.v=v.v;slDraw()});
+  const end=()=>{if(!drag)return;const moved=drag.moved;drag=null;if(moved){slCheck();slSave();slDraw()}};
+  SL.cv.addEventListener('pointerup',end);SL.cv.addEventListener('pointercancel',end);
   new ResizeObserver(()=>slDraw()).observe($('#sl-wrap'));
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>slDraw());
 })();
@@ -223,9 +240,12 @@ function slDraw(){const s=SL.st,cv=SL.cv;if(!s)return;
     if(v===1){x.strokeStyle=s.done?ok:ink;x.lineWidth=Math.max(3,cs*.11);x.beginPath();x.moveTo(ax,ay);x.lineTo(bx,by);x.stroke()}
     else{const mx=(ax+bx)/2,my=(ay+by)/2,r=cs*.1;x.strokeStyle=pen;x.lineWidth=2;x.beginPath();x.moveTo(mx-r,my-r);x.lineTo(mx+r,my+r);x.moveTo(mx+r,my-r);x.lineTo(mx-r,my+r);x.stroke()}}
   x.fillStyle=ink;for(let v=0;v<G.NV;v++){const[px,py]=P(v);x.beginPath();x.arc(px,py,Math.max(2.2,cs*.05),0,7);x.fill()}
+  // 線が3本以上つながった点（枝分かれ）を赤く
+  let bad=0;for(let v=0;v<G.NV;v++){let d=0;for(const e of G.vertE[v])if(s.lines[e]===1)d++;if(d>2){bad++;const[px,py]=P(v);x.strokeStyle=pen;x.lineWidth=3;x.beginPath();x.arc(px,py,cs*.16,0,7);x.stroke()}}
   const msg=$('#sl-msg');
   if(s.done){msg.className='msg win';msg.textContent=`クリア！ ${fmt(s.time)}`+(s.newBest?'　ベスト更新':'')}
-  else{msg.className='msg';msg.textContent=`${n}×${n}・線は1本の輪に。交差・枝分かれなし`}}
+  else if(bad){msg.className='msg warn';msg.textContent='赤い点で線が枝分かれしています'}
+  else{msg.className='msg';msg.textContent=`${n}×${n}・点から点へなぞると続けて引けます`}}
 async function slStart(){
   const id=getParam('id');
   if(id){const r=await Save.getPuzzle(id);if(r&&r.game==='slither'){slOpen(r);return}}

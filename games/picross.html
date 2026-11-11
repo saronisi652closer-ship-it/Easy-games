@@ -34,6 +34,8 @@
 .opts{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding-bottom:8px}
 .opts .seg{flex:0 0 auto}
 .stage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.stage.zoomed{overflow:auto;align-items:safe center;justify-content:safe center;-webkit-overflow-scrolling:touch}
+.stage.zoomed .board{margin:auto}
 .board{display:grid;touch-action:none;user-select:none;-webkit-user-select:none}
 .cc{display:flex;flex-direction:column;justify-content:flex-end;align-items:center;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;line-height:1.15;padding-bottom:3px}
 .rc{display:flex;justify-content:flex-end;align-items:center;gap:.35em;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;padding-right:5px;white-space:nowrap}
@@ -46,7 +48,7 @@
 .cell.bad{background:var(--penBg)} .cell.bad::before,.cell.bad::after{background:var(--pen)}
 .cell.t5{border-right:2px solid var(--ink)} .cell.b5{border-bottom:2px solid var(--ink)}
 .cell.l0{border-left:2px solid var(--ink)} .cell.top0{border-top:2px solid var(--ink)}
-.tools{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding-bottom:16px}
+.tools{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding-bottom:16px}
 .tools .btn{padding:11px 4px;font-size:14px}
 .reveal{display:flex;justify-content:center}
 .reveal canvas{width:min(60vw,200px);height:auto;image-rendering:pixelated;border:2px solid var(--ink);border-radius:6px;background:var(--card)}
@@ -59,19 +61,22 @@
   <section id="menu">
     <div class="sec" id="resumes" hidden></div>
     <div class="sec"><h3>絵の問題</h3><div class="pics" id="pics"></div></div>
+    <div class="sec" id="galWrap" hidden><h3>完成した絵 <small id="galN" style="font:500 12px var(--body);color:var(--ink2)"></small></h3><div class="pics" id="gal"></div></div>
     <div class="sec"><h3>自動生成</h3><div class="autos" id="autos"></div>
       <p class="note" style="margin-top:8px">約30種類の絵から、大きさ・位置・向きを変えて毎回出題します。どれも数字だけで答えが1つに決まります。</p></div>
   </section>
 
   <section id="play" hidden>
     <div class="opts">
-      <div class="seg" id="tool" role="group" aria-label="道具"><button type="button" data-v="1" aria-pressed="true">■ 塗る</button><button type="button" data-v="2" aria-pressed="false">× 印</button></div>
+      <div class="seg" id="tool" role="group" aria-label="道具"><button type="button" data-v="1" aria-pressed="true">■ 塗る</button><button type="button" data-v="2" aria-pressed="false">× 印</button><button type="button" data-v="3" aria-pressed="false">✋ 移動</button></div>
+      <button class="btn" id="zoom" type="button" aria-pressed="false">拡大</button>
       <button class="btn" id="miss" type="button" aria-pressed="false">ミスを教える</button>
     </div>
     <div class="stage" id="stage"><div class="board" id="board"></div></div>
     <p class="msg" id="msg"></p>
     <div class="tools">
-      <button class="btn" id="undo" type="button">戻す</button>
+      <button class="btn" id="undo" type="button">↶ 戻す</button>
+      <button class="btn" id="redo" type="button">↷ 進む</button>
       <button class="btn" id="clear" type="button">全部消す</button>
       <button class="btn" id="quit" type="button">問題を選ぶ</button>
     </div>
@@ -303,7 +308,7 @@ Save.ready.then(()=>{
 const $=s=>document.querySelector(s);
 const store=makeStore('px_');
 const fmt=s=>{s=Math.floor(s||0);return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')};
-let P=null,tool=1,missOn=store.get('miss',false),hist=[],tAcc=0,tStart=null,tIv=null;
+let P=null,tool=1,missOn=store.get('miss',false),hist=[],fut=[],zoom=false,tAcc=0,tStart=null,tIv=null;
 
 /* ---------- clock ---------- */
 const now=()=>tAcc+(tStart?(performance.now()-tStart)/1000:0);
@@ -325,6 +330,12 @@ function showMenu(){
     b.onclick=()=>startPic(p);$('#pics').appendChild(b)});
   const best=store.get('best',{});
   $('#autos').innerHTML=[5,10,15].map(n=>`<button class="auto" type="button" data-n="${n}"><b>${n}×${n}</b><small>ベスト ${best[n]!=null?fmt(best[n]):'--:--'}</small></button>`).join('');
+  const gal=store.get('gallery',[]);$('#galWrap').hidden=!gal.length;$('#galN').textContent=gal.length+'枚';$('#gal').innerHTML='';
+  gal.slice(0,16).forEach((g,i)=>{const b=document.createElement('button');b.type='button';b.className='pic';b.appendChild(thumb(g.sol,null,g.colors));
+    b.insertAdjacentHTML('beforeend',`<span>${g.name}</span><small>${g.w}×${g.h}</small>`);
+    b.onclick=()=>{$('#layer').innerHTML=`<div class="scrim" id="gsc"><div class="sheet"><h3>「${g.name}」</h3><div class="reveal" id="rv"></div><p style="text-align:center">${g.w}×${g.h}・タイム ${fmt(g.time)}・${new Date(g.at).toLocaleDateString('ja-JP')}</p><button class="btn" type="button" style="padding:12px">閉じる</button></div></div>`;
+      $('#rv').appendChild(thumb(g.sol,null,g.colors));$('#gsc').onclick=e=>{if(e.target.id==='gsc'||e.target.closest('button'))$('#layer').innerHTML=''}};
+    $('#gal').appendChild(b)});
   Save.listPuzzles('picross').then(list=>{const r=$('#resumes');const ip=(list||[]).filter(x=>x.status!=='clear');
     if(!ip.length){r.hidden=true;return}r.hidden=false;
     r.innerHTML=`<h3>つづきから <small style="font:500 12px var(--body);color:var(--ink2)">${ip.length}件</small></h3><div class="slist">${ip.slice(0,3).map(x=>{const p=Math.round((x.progress||0)*100);
@@ -344,7 +355,7 @@ function startAuto(n){
 }
 function loadRec(rec){load({...rec.data,uid:rec.id,created:rec.created})}
 function load(st){
-  P=st;if(!P.uid){P.uid=Save.newId('picross');P.created=Date.now()}P.clues=pxCluesOf(P.sol);P.h=P.sol.length;P.w=P.sol[0].length;hist=[];
+  P=st;if(!P.uid){P.uid=Save.newId('picross');P.created=Date.now()}P.clues=pxCluesOf(P.sol);P.h=P.sol.length;P.w=P.sol[0].length;hist=[];fut=[];
   $('#menu').hidden=true;$('#play').hidden=false;$('#time').hidden=false;$('#back').href='#';
   $('#title').textContent=P.kind==='pic'?`ピクロス ${P.w}×${P.h}`:`自動生成 ${P.w}×${P.h}`;
   tAcc=P.time||0;tStart=null;clockRun();build();render();
@@ -361,6 +372,8 @@ function build(){
   const availW=Math.min(st.width,520),availH=st.height;
   let cs=Math.floor(Math.min(42,(availW-4)/(w+maxR*.62),(availH-4)/(h+maxC*.75)));
   cs=Math.max(cs,14);
+  if(zoom)cs=Math.max(cs,Math.min(44,Math.round(cs*1.8)));
+  $('#stage').classList.toggle('zoomed',zoom);
   const fs=Math.max(9,Math.min(15,cs*.52));
   b.style.gridTemplateColumns=`${Math.ceil(maxR*fs*.95+6)}px repeat(${w},${cs}px)`;
   b.style.gridTemplateRows=`${Math.ceil(maxC*fs*1.2+4)}px repeat(${h},${cs}px)`;
@@ -376,9 +389,9 @@ function build(){
       if((x+1)%5===0||x===w-1)c.classList.add('t5');if((y+1)%5===0||y===h-1)c.classList.add('b5');
       b.appendChild(c);cells[y][x]=c}
   }
-  b.style.transform='';
+  b.style.transform='';b.style.touchAction=tool===3?'auto':'none';
   const br=b.getBoundingClientRect(),k=Math.min(1,(st.width-2)/br.width,(st.height-2)/br.height);
-  if(k<1){b.style.transform=`scale(${k})`;b.style.transformOrigin='center center'}
+  if(k<1&&!zoom){b.style.transform=`scale(${k})`;b.style.transformOrigin='center center'}
 }
 function lineDone(line,clue){const c=pxClues(line);return c.length===clue.length&&c.every((v,i)=>v===clue[i])}
 function render(hy=-1,hx=-1){
@@ -403,9 +416,9 @@ function apply(y,x){
   P.marks[y][x]=t;
 }
 $('#board').addEventListener('pointerdown',e=>{
-  if(!P||P.done)return;const c=cellAt(e);if(!c)return;e.preventDefault();
+  if(!P||P.done||tool===3)return;const c=cellAt(e);if(!c)return;e.preventDefault();
   const [y,x]=c,cur=P.marks[y][x];if(cur===3)return;
-  hist.push(P.marks.map(r=>r.slice()));if(hist.length>200)hist.shift();
+  hist.push(P.marks.map(r=>r.slice()));if(hist.length>200)hist.shift();fut=[];
   drag={y,x,axis:null,from:cur,target:tool===1?(cur===1?0:1):(cur===2?0:(cur===1?-1:2))};
   if(drag.target===-1){drag=null;hist.pop();return}
   try{$('#board').setPointerCapture(e.pointerId)}catch(_){}
@@ -429,6 +442,8 @@ function check(){
   for(let y=0;y<h;y++)for(let x=0;x<w;x++)if(marks[y][x]!==1)marks[y][x]=2;
   render();
   store.set('count',store.get('count',0)+1);
+  {const pk=P.kind==='pic'?PX_PICS.find(p=>p.id===P.id):null;const cols=pk?pk.rows.map(r=>[...r].map(c=>c==='.'?null:PX_PAL[c])):P.colors;
+   const gal=store.get('gallery',[]);gal.unshift({name:pk?pk.name:(P.name||'もよう'),w,h,sol:P.sol,colors:cols||null,time:Math.floor(P.time),at:Date.now()});store.set('gallery',gal.slice(0,150))}
   let newBest=false;
   if(P.kind==='pic'){const s=store.get('solved',[]);if(!s.includes(P.id)){s.push(P.id);store.set('solved',s)}}
   else{const b=store.get('best',{});if(b[w]==null||P.time<b[w]){b[w]=Math.floor(P.time);newBest=true;store.set('best',b)}}
@@ -446,10 +461,12 @@ function check(){
 }
 
 /* ---------- controls ---------- */
-$('#tool').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;tool=+b.dataset.v;for(const x of $('#tool').children)x.setAttribute('aria-pressed',String(x===b))});
+$('#tool').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;tool=+b.dataset.v;for(const x of $('#tool').children)x.setAttribute('aria-pressed',String(x===b));$('#board').style.touchAction=tool===3?'auto':'none'});
+$('#zoom').onclick=()=>{zoom=!zoom;$('#zoom').setAttribute('aria-pressed',String(zoom));if(zoom&&tool!==3)toast('拡大中は「✋ 移動」で画面を動かせます');if(P){build();render()}};
+$('#redo').onclick=()=>{if(!P||P.done||!fut.length)return;hist.push(P.marks.map(r=>r.slice()));P.marks=fut.pop();render();save()};
 $('#miss').setAttribute('aria-pressed',String(missOn));
 $('#miss').onclick=()=>{missOn=!missOn;store.set('miss',missOn);$('#miss').setAttribute('aria-pressed',String(missOn));if(P)render()};
-$('#undo').onclick=()=>{if(!P||P.done||!hist.length)return;P.marks=hist.pop();render();save()};
+$('#undo').onclick=()=>{if(!P||P.done||!hist.length)return;fut.push(P.marks.map(r=>r.slice()));P.marks=hist.pop();render();save()};
 $('#clear').onclick=()=>{if(!P||P.done)return;hist.push(P.marks.map(r=>r.slice()));P.marks=P.marks.map(r=>r.map(()=>0));P.miss=0;render();save()};
 $('#quit').onclick=showMenu;
 $('#back').addEventListener('click',e=>{if(P){e.preventDefault();showMenu()}});

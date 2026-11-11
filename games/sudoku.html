@@ -30,7 +30,7 @@
 .nums button{border:1.5px solid var(--ink);background:var(--card);border-radius:8px;padding:6px 0 3px;display:flex;flex-direction:column;align-items:center;font-size:21px;font-weight:900;line-height:1}
 .nums button small{font-size:9.5px;font-weight:500;color:var(--ink2);margin-top:3px}
 .nums button.full{opacity:.3}
-.tools{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.tools{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
 .tools .btn{padding:9px 4px}
 </style>
 </head>
@@ -40,7 +40,7 @@
     <header class="bar"><a class="back" href="../index.html">‹ 戻る</a><h2>ナンプレ</h2><button class="btn" id="sd-list" type="button">一覧</button><span class="timer" id="sd-time">00:00</span></header>
     <div class="opts">
       <div class="seg" id="sd-diff" role="group" aria-label="難しさ">
-        <button type="button" data-v="easy">かんたん</button><button type="button" data-v="normal">ふつう</button><button type="button" data-v="hard">むずかしい</button>
+        <button type="button" data-v="easy">かんたん</button><button type="button" data-v="normal">ふつう</button><button type="button" data-v="hard">むずかしい</button><button type="button" data-v="oni">鬼</button>
       </div>
       <button class="btn primary" id="sd-new" type="button">新しい問題</button>
     </div>
@@ -49,9 +49,11 @@
     <div class="under">
       <div class="nums" id="sd-nums"></div>
       <div class="tools">
-        <button class="btn" id="sd-undo" type="button">戻す</button>
+        <button class="btn" id="sd-undo" type="button">↶ 戻す</button>
+        <button class="btn" id="sd-redo" type="button">↷ 進む</button>
         <button class="btn" id="sd-erase" type="button">消す</button>
         <button class="btn" id="sd-memo" type="button" aria-pressed="false">メモ</button>
+        <button class="btn" id="sd-auto" type="button">自動メモ</button>
         <button class="btn" id="sd-hint" type="button">ヒント</button>
       </div>
     </div>
@@ -86,18 +88,56 @@ function sdSolve(g,limit,randomize){
   })();
   return count;
 }
-function sdGenerate(diff){
-  const g=new Array(81).fill(0);
-  sdSolve(g,1,true); // g is now a full grid
-  const sol=g.slice();
-  const target={easy:40,normal:32,hard:25}[diff]||32;
-  let clues=81;
-  for(const i of shuffle([...Array(81).keys()])){
-    if(clues<=target)break;
-    const b=g[i];g[i]=0;
-    if(sdSolve(g.slice(),2,false)===1)clues--;else g[i]=b;
+/* ===== ナンプレ：解き方で難易度を決める ===== */
+// 盤面ごとの「行・列・ブロック」のマス一覧
+const SD_UNITS=(()=>{const u=[];for(let r=0;r<9;r++)u.push([...Array(9)].map((_,c)=>r*9+c));
+  for(let c=0;c<9;c++)u.push([...Array(9)].map((_,r)=>r*9+c));
+  for(let b=0;b<9;b++){const br=((b/3)|0)*3,bc=(b%3)*3,a=[];for(let k=0;k<9;k++)a.push((br+((k/3)|0))*9+bc+k%3);u.push(a)}return u})();
+const SD_PEERS=[...Array(81)].map((_,i)=>{const s=new Set();for(const u of SD_UNITS)if(u.includes(i))u.forEach(j=>{if(j!==i)s.add(j)});return [...s]});
+const SD_CELLUNITS=[...Array(81)].map((_,i)=>SD_UNITS.map((u,k)=>u.includes(i)?k:-1).filter(k=>k>=0));
+// 各マスに入りうる数字（ビット）
+function sdCands(g){const c=new Array(81).fill(0);for(let i=0;i<81;i++){if(g[i])continue;let m=0x3FE;for(const j of SD_PEERS[i])if(g[j])m&=~(1<<g[j]);c[i]=m}return c}
+// 論理だけで解いて、必要だった一番むずかしい手を返す。1=シングルだけ 2=ロック・ペア 3=それ以上が必要
+function sdGrade(puzzle){
+  const g=puzzle.slice();let c=sdCands(g);let level=1;
+  const place=(i,d)=>{g[i]=d;c[i]=0;for(const j of SD_PEERS[i])c[j]&=~(1<<d)};
+  for(let guard=0;guard<400;guard++){
+    if(g.every(v=>v))return level;
+    let moved=false;
+    for(let i=0;i<81;i++)if(!g[i]){if(!c[i])return 9;if(popc(c[i])===1){place(i,Math.log2(c[i]));moved=true}}
+    if(moved)continue;
+    for(const u of SD_UNITS){for(let d=1;d<=9;d++){const b=1<<d;if(u.some(i=>g[i]===d))continue;const ps=u.filter(i=>!g[i]&&(c[i]&b));
+      if(ps.length===1){place(ps[0],d);moved=true}}}
+    if(moved)continue;
+    // ロック（ポインティング・クレーミング）
+    for(let k=0;k<27&&!moved;k++){const u=SD_UNITS[k];for(let d=1;d<=9;d++){const b=1<<d;const ps=u.filter(i=>!g[i]&&(c[i]&b));if(ps.length<2)continue;
+      for(let k2=0;k2<27;k2++){if(k2===k)continue;const u2=SD_UNITS[k2];if(ps.every(i=>u2.includes(i))){for(const j of u2)if(!ps.includes(j)&&!g[j]&&(c[j]&b)){c[j]&=~b;moved=true}}}}}
+    // ネイキッドペア
+    if(!moved)for(const u of SD_UNITS){const two=u.filter(i=>!g[i]&&popc(c[i])===2);
+      for(let a=0;a<two.length;a++)for(let b2=a+1;b2<two.length;b2++)if(c[two[a]]===c[two[b2]]){const m=c[two[a]];for(const j of u)if(j!==two[a]&&j!==two[b2]&&!g[j]&&(c[j]&m)){c[j]&=~m;moved=true}}}
+    // ヒドゥンペア
+    if(!moved)for(const u of SD_UNITS){const pos={};for(let d=1;d<=9;d++){const ps=u.filter(i=>!g[i]&&(c[i]&(1<<d)));if(ps.length===2)pos[d]=ps}
+      const ds=Object.keys(pos);for(let a=0;a<ds.length;a++)for(let b2=a+1;b2<ds.length;b2++){const A=pos[ds[a]],Bp=pos[ds[b2]];
+        if(A[0]===Bp[0]&&A[1]===Bp[1]){const m=(1<<ds[a])|(1<<ds[b2]);for(const i of A)if(c[i]!==m){c[i]=m;moved=true}}}}
+    if(moved){level=Math.max(level,2);continue}
+    return 3;
   }
-  return {puzzle:g,sol};
+  return 3;
+}
+const SD_LEVELS={easy:{clues:38,grade:1},normal:{clues:30,grade:1},hard:{clues:0,grade:2},oni:{clues:0,grade:3}};
+function sdDig(sol,target){const g=sol.slice();let clues=81;
+  for(const i of shuffle([...Array(81).keys()])){if(clues<=target)break;const b=g[i];g[i]=0;if(sdSolve(g.slice(),2,false)===1)clues--;else g[i]=b}
+  return g}
+function sdGenerate(diff){
+  const lv=SD_LEVELS[diff]||SD_LEVELS.normal,t0=Date.now();let best=null;
+  for(let tries=0;tries<200;tries++){
+    const g=new Array(81).fill(0);sdSolve(g,1,true);const sol=g.slice();
+    const puzzle=sdDig(sol,lv.clues);const gr=sdGrade(puzzle);
+    if(gr===lv.grade)return {puzzle,sol,grade:gr};
+    if(!best||Math.abs(gr-lv.grade)<Math.abs(best.grade-lv.grade))best={puzzle,sol,grade:gr};
+    if(Date.now()-t0>2500)break;
+  }
+  return best;
 }
 
 /* ---------- ナンプレ 画面（複数問題の途中保存に対応） ---------- */
@@ -118,7 +158,9 @@ const SD={id:null,created:0,st:null,memo:false,pick:store.get('sdDiff','normal')
   $('#sd-list').addEventListener('click',()=>{sdSave();openSaveList({game:'sudoku',currentId:SD.id,
     onOpen:rec=>{sdLeave();sdOpen(rec)},onRestart:rec=>{sdLeave();sdRestart(rec)},onNew:()=>{sdLeave();sdNew(SD.pick)},newLabel:`新しい問題（${DIFF_JA[SD.pick]}）`,
     onDeleteCurrent:()=>{SD.id=null;SD.st=null;sdStart()}})});
-  $('#sd-undo').addEventListener('click',()=>{const s=SD.st;if(!s||s.done||!s.hist.length)return;const h=s.hist.pop();s.cur=h[0];s.memo=h[1];sdSave();sdRender()});
+  $('#sd-undo').addEventListener('click',()=>{const s=SD.st;if(!s||s.done||!s.hist.length)return;s.fut=s.fut||[];s.fut.push([s.cur.slice(),s.memo.slice()]);const h=s.hist.pop();s.cur=h[0];s.memo=h[1];sdSave();sdRender()});
+  $('#sd-redo').addEventListener('click',()=>{const s=SD.st;if(!s||s.done||!s.fut||!s.fut.length)return;s.hist.push([s.cur.slice(),s.memo.slice()]);const h=s.fut.pop();s.cur=h[0];s.memo=h[1];sdSave();sdRender()});
+  $('#sd-auto').addEventListener('click',()=>{const s=SD.st;if(!s||s.done)return;sdPush();const c=sdCands(s.cur);for(let i=0;i<81;i++)if(!s.cur[i])s.memo[i]=c[i];Sfx.play('ok');toast('入れられる数字をメモに書きました');sdSave();sdRender()});
   $('#sd-erase').addEventListener('click',()=>{const s=SD.st;if(!s||s.done||s.sel<0||s.puzzle[s.sel])return;if(!s.cur[s.sel]&&!s.memo[s.sel])return;sdPush();s.cur[s.sel]=0;s.memo[s.sel]=0;sdSave();sdRender()});
   $('#sd-memo').addEventListener('click',()=>{SD.memo=!SD.memo;$('#sd-memo').setAttribute('aria-pressed',String(SD.memo))});
   $('#sd-hint').addEventListener('click',()=>{const s=SD.st;if(!s||s.done)return;
@@ -131,7 +173,7 @@ const SD={id:null,created:0,st:null,memo:false,pick:store.get('sdDiff','normal')
       if(e.key==='ArrowUp')r=(r+8)%9;if(e.key==='ArrowDown')r=(r+1)%9;if(e.key==='ArrowLeft')c=(c+8)%9;if(e.key==='ArrowRight')c=(c+1)%9;s.sel=r*9+c}
       sdRender();e.preventDefault()}});
 })();
-function sdPush(){const s=SD.st;s.hist.push([s.cur.slice(),s.memo.slice()]);if(s.hist.length>200)s.hist.shift()}
+function sdPush(){const s=SD.st;s.hist.push([s.cur.slice(),s.memo.slice()]);if(s.hist.length>200)s.hist.shift();s.fut=[]}
 function sdPeers(i,j){const r1=(i/9)|0,c1=i%9,r2=(j/9)|0,c2=j%9;return r1===r2||c1===c2||(((r1/3)|0)===((r2/3)|0)&&((c1/3)|0)===((c2/3)|0))}
 function sdClearPeers(i,d){const s=SD.st;for(let j=0;j<81;j++)if(j!==i&&sdPeers(i,j))s.memo[j]&=~(1<<d)}
 function sdInput(d){const s=SD.st;if(!s||s.done||s.sel<0||s.puzzle[s.sel])return;
@@ -167,6 +209,7 @@ function sdRender(){const s=SD.st;if(!s)return;
     else b.textContent=''}
   for(let d=1;d<=9;d++){let c=0;for(let i=0;i<81;i++)if(s.cur[i]===d&&s.sol[i]===d)c++;
     const b=$('#sd-n'+d);b.classList.toggle('full',c>=9);b.querySelector('small').textContent=c>=9?'✓':9-c}
+  $('#sd-undo').disabled=s.done||!s.hist.length;$('#sd-redo').disabled=s.done||!(s.fut&&s.fut.length);
   const m=$('#sd-msg');
   if(s.done){m.className='msg win';m.textContent=`クリア！ ${fmt(s.time)}`+(s.newBest?'　ベスト更新':s.hints?`　（ヒント${s.hints}回）`:'')}
   else{m.className='msg'+(s.mistakes?' warn':'');m.textContent=`${DIFF_JA[s.diff]}・ミス ${s.mistakes}`+(s.hints?`・ヒント ${s.hints}`:'')}

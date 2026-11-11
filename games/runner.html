@@ -28,7 +28,7 @@
 <body>
 <div id="app">
   <section class="view" id="v-runner">
-    <header class="bar"><a class="back" href="../index.html">‹ 戻る</a><h2>坂道チャリ</h2><span class="timer" id="rn-best">ベスト 0m</span></header>
+    <header class="bar"><a class="back" href="../index.html">‹ 戻る</a><h2>坂道チャリ</h2><button class="btn" id="pauseBtn" type="button">⏸</button><span class="timer" id="rn-best">ベスト 0m</span></header>
     <div class="stage" style="padding-bottom:10px">
       <div class="rn-wrap" id="rn-wrap"><canvas id="rn-cv"></canvas>
         <div class="rn-over" id="rn-over"><h3>坂道チャリ</h3><p>タップでジャンプ・空中でもう1回</p><p>穴と岩に気をつけて</p><p class="big" id="rn-big" hidden></p><p id="rn-sub">タップでスタート</p></div>
@@ -126,7 +126,7 @@ function rnLoopStart(){if(!RN.raf){RN.last=performance.now();RN.raf=requestAnima
 function rnEnter(){rnBest();if(!RN.R)rnReset();rnOverlay();requestAnimationFrame(rnDraw)}
 function rnLeave(){if(RN.state==='play'){RN.state='paused';rnOverlay()}}
 
-matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{RN.colors=null;rnDraw()});
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{RN.colors=null;rnDraw()});document.getElementById('pauseBtn').onclick=()=>{rnLeave()};
 document.addEventListener('visibilitychange',()=>{if(document.hidden)rnLeave()});
 window.addEventListener('pagehide',()=>rnLeave());
 rnEnter();
