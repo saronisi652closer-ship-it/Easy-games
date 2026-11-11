@@ -115,7 +115,7 @@ const FORMS={
 const DEX_ORDER=['egg','puni','puniru','koron','moyan','garudon','fuwarin','buden','keketto','garudrago','sorafuwa','gorodon','yamikeke'];
 // per level: stage length, hunger/strength decay, poop interval (minutes), sleep window, base weight
 const LV=[
-  {dur:10*MIN,hun:0,poo:0,sleep:null,base:0},
+  {dur:8000,hun:0,poo:0,sleep:null,base:0},
   {dur:1*HOUR,hun:3,poo:4,sleep:null,base:5},
   {dur:1*DAY,hun:30,poo:60,sleep:[20,8],base:10},
   {dur:3*DAY,hun:60,poo:120,sleep:[21,8],base:20},
@@ -173,6 +173,8 @@ function step(t){
   if(t-S.stageStart>=cfg.dur&&!(S.sleeping&&L>0))evolve(t);
 }
 function simulate(){
+  // タマゴは数秒でかえる（分単位の計算より先に判定）
+  if(S.form==='egg'&&clock()-S.stageStart>=LV[0].dur){const t=S.stageStart+LV[0].dur;evolve(t);S.last=Math.max(S.last,t)}
   const to=clock();let t=S.last;
   if(to-t>21*DAY)t=to-21*DAY;
   while(t+MIN<=to){t+=MIN;step(t)}
@@ -312,8 +314,9 @@ $('#bData').onclick=()=>{simulate();save();const code=enc({v:1,state:S,seen:stor
 new ResizeObserver(()=>{sizeCanvas();drawLCD()}).observe($('#lcd'));
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)tick()});
 setInterval(tick,30000);
+const eggIv=setInterval(()=>{if(S.form!=='egg'){clearInterval(eggIv);return}tick()},1000);
 sizeCanvas();tick();
-if(lv()===0&&!events.length)say('タマゴが ゆれている…');
+if(lv()===0&&!events.length)say('タマゴが ゆれている… もうすぐ かえりそう！');
 
 });
 </script>

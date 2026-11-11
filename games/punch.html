@@ -11,28 +11,28 @@
 <style>.bar .back{flex:none}</style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Dela+Gothic+One&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap">
 <style>
-/* Layout: one-screen ring — opponent plate / ring with two boxers / message window / three punch buttons. Same notebook palette as すきま脳トレ箱 */
+/* Layout: 携帯ゲーム機の対戦画面 — 上に相手の情報と立ち位置、手前に自分の後ろ姿、下にメッセージ窓と技のパネル。周りは すきま脳トレ箱 の方眼ノート */
 :root{
   --paper:#EBF0F6; --grid:#D9E1EC; --card:#FFFFFF; --ink:#18264A; --ink2:#5B6886; --line:#C2CDDD;
-  --mark:#F7C843; --markInk:#18264A; --red:#D2433A; --blue:#2F63D3; --ok:#2B8A57; --warn:#E39B1B;
-  --ring:#F4E7CF; --ringLine:#D9C7A4; --rope:#D2433A; --msg:#FFFFFF;
-  --focus:#C8432F; --mach:#2F63D3; --upper:#7A4FC2;
+  --mark:#F7C843; --markInk:#18264A; --red:#D2433A; --ok:#2B8A57;
+  --dot:"DotGothic16","Hiragino Sans","Noto Sans JP",monospace;
   --display:"Dela Gothic One","Hiragino Sans","Noto Sans JP",sans-serif;
   --body:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",system-ui,sans-serif;
+  /* 対戦画面の中は昼の草原で固定 */
+  --sky1:#F8F0D8; --sky2:#E3F0D2; --grass:#B9DB8E; --plat:#8FC46A; --platEdge:#6FA650;
+  --box:#FBFBF4; --boxEdge:#3A3A3A; --boxShade:#B8B8AA; --hpBg:#4A4A4A; --hpG:#3FD16A; --hpY:#F2C431; --hpR:#E8483A;
+  --win:#FFFFFF; --winEdge:#3A4E7A; --winIn:#6C84B8; --txt:#2B2B33;
+  --fight:#C2582E; --fightLo:#8E3A1C;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --paper:#111827; --grid:#1A2335; --card:#1B2438; --ink:#E4E9F3; --ink2:#97A3BD; --line:#33405A;
-  --mark:#F2C23A; --markInk:#18264A; --red:#FF6B5F; --blue:#7FA6FF; --ok:#4FC283; --warn:#F2B04A;
-  --ring:#2A2A33; --ringLine:#3D3D4A; --rope:#B8433A; --msg:#1B2438;
-  --focus:#FF7A62; --mach:#7FA6FF; --upper:#B696F0;
+  --mark:#F2C23A; --markInk:#18264A; --red:#FF6B5F; --ok:#4FC283;
   color-scheme:dark}}
 :root[data-theme="dark"]{
   --paper:#111827; --grid:#1A2335; --card:#1B2438; --ink:#E4E9F3; --ink2:#97A3BD; --line:#33405A;
-  --mark:#F2C23A; --markInk:#18264A; --red:#FF6B5F; --blue:#7FA6FF; --ok:#4FC283; --warn:#F2B04A;
-  --ring:#2A2A33; --ringLine:#3D3D4A; --rope:#B8433A; --msg:#1B2438;
-  --focus:#FF7A62; --mach:#7FA6FF; --upper:#B696F0;
+  --mark:#F2C23A; --markInk:#18264A; --red:#FF6B5F; --ok:#4FC283;
   color-scheme:dark}
 
 html,body{height:100%}
@@ -42,72 +42,81 @@ button{font-family:var(--body);color:inherit;cursor:pointer;touch-action:manipul
 button:focus-visible{outline:3px solid var(--mark);outline-offset:2px}
 #app{height:100%;max-width:520px;margin:0 auto;display:flex;flex-direction:column;gap:8px;padding-block:10px 12px;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
-
 .bar{display:flex;align-items:center;gap:8px}
-.bar h1{font:400 19px var(--display);margin:0;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar h1{font:400 18px var(--display);margin:0;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .streak{font:700 13px var(--body);font-variant-numeric:tabular-nums;background:var(--mark);color:var(--markInk);padding:4px 10px;border-radius:6px;white-space:nowrap}
-.icon-btn{border:1.5px solid var(--ink);background:var(--card);border-radius:999px;padding:5px 11px;font-weight:700;font-size:12.5px;white-space:nowrap}
 
-/* plates */
-.plate{background:var(--card);border:1.5px solid var(--ink);border-radius:10px;padding:7px 10px;display:flex;flex-direction:column;gap:4px;box-shadow:2px 2px 0 var(--ink)}
-.plate .row{display:flex;align-items:baseline;gap:8px}
-.plate b{font-size:14px}
-.plate .who{font-size:11px;font-weight:700;color:var(--ink2)}
-.plate .hpnum{margin-left:auto;font:700 13px var(--body);font-variant-numeric:tabular-nums}
-.hp{height:8px;border-radius:4px;background:var(--line);overflow:hidden}
-.hp i{display:block;height:100%;width:100%;background:var(--ok);border-radius:4px;transition:width .6s ease}
-.hp i.mid{background:var(--warn)} .hp i.low{background:var(--red)}
-.tag{font-size:10.5px;font-weight:900;padding:1px 6px;border-radius:4px;background:var(--grid);color:var(--ink2)}
+/* ===== 対戦画面 ===== */
+.screen{border:3px solid #2B2B33;border-radius:12px;overflow:hidden;background:#2B2B33;display:flex;flex-direction:column;gap:3px;box-shadow:0 4px 0 rgba(0,0,0,.18)}
+.field{position:relative;aspect-ratio:16/12;max-height:50vh;max-height:50dvh;width:100%;overflow:hidden;
+  background:linear-gradient(var(--sky1) 0%,var(--sky2) 55%,var(--grass) 55%,var(--grass) 100%)}
+.field::before{content:"";position:absolute;left:0;right:0;top:55%;height:2px;background:rgba(0,0,0,.06)}
+.plat{position:absolute;border-radius:50%;background:radial-gradient(ellipse at 50% 40%,var(--plat) 55%,var(--platEdge) 100%)}
+.plat.cpu{right:4%;top:34%;width:44%;height:14%}
+.plat.me{left:-6%;bottom:-4%;width:58%;height:18%}
+.mon{position:absolute;z-index:2;transition:transform .5s ease,opacity .5s}
+.mon svg{width:100%;height:100%;display:block}
+#fCpu{right:10%;top:3%;width:32%;aspect-ratio:1}
+#fMe{left:0;bottom:-8%;width:42%;aspect-ratio:1}
+.mon.enter-l{transform:translateX(-140%)} .mon.enter-r{transform:translateX(140%)}
+.mon.atk-me{animation:atkMe .32s ease} .mon.atk-cpu{animation:atkCpu .32s ease}
+@keyframes atkMe{45%{transform:translate(18%,-12%)}} @keyframes atkCpu{45%{transform:translate(-18%,10%)}}
+.mon.blink{animation:blink .6s steps(1) 1}
+@keyframes blink{0%,33%,66%{opacity:0}16%,50%,83%{opacity:1}}
+.mon.focus svg{filter:drop-shadow(0 0 6px #FF8A3D) drop-shadow(0 0 12px #FFB13D)}
+.mon.faint{transform:translateY(70%);opacity:0}
+.burst{position:absolute;z-index:3;width:26%;aspect-ratio:1;pointer-events:none;animation:burst .38s ease-out forwards}
+@keyframes burst{0%{transform:scale(.3);opacity:1}100%{transform:scale(1.2);opacity:0}}
+.flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;z-index:4}
+.flash.on{animation:flash .25s ease-out}
+@keyframes flash{30%{opacity:.75}}
 
-/* ring */
-.ring{position:relative;flex:1;min-height:150px;border:2px solid var(--ink);border-radius:12px;overflow:hidden;
-  background:linear-gradient(transparent 62%,var(--ring) 62%);}
-.ring::before{content:"";position:absolute;left:0;right:0;top:34%;height:3px;background:var(--rope);box-shadow:0 14px 0 var(--rope),0 28px 0 var(--rope);opacity:.75}
-.ring::after{content:"";position:absolute;left:0;right:0;bottom:0;height:38%;background:repeating-linear-gradient(90deg,transparent 0 46px,var(--ringLine) 46px 48px)}
-.fighter{position:absolute;bottom:9%;width:34%;max-width:150px;aspect-ratio:1;z-index:1}
-.fighter svg{width:100%;height:100%;display:block}
-#fMe{left:8%} #fCpu{right:8%}
-#fCpu svg{transform:scaleX(-1)}
-.fighter.lunge-r{animation:lungeR .35s ease}
-.fighter.lunge-l{animation:lungeL .35s ease}
-.fighter.quick-r{animation:lungeR .2s ease}
-.fighter.quick-l{animation:lungeL .2s ease}
-.fighter.hit{animation:hit .4s ease}
-.fighter.focus svg{filter:drop-shadow(0 0 8px var(--focus))}
-.fighter.down{transform:translateY(18%) rotate(-8deg);opacity:.35;transition:all .5s}
-#fCpu.down{transform:translateY(18%) rotate(8deg)}
-@keyframes lungeR{40%{transform:translateX(60%)}}
-@keyframes lungeL{40%{transform:translateX(-60%)}}
-@keyframes hit{20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}30%{opacity:.4}}
-.pop{position:absolute;z-index:2;font:400 20px var(--display);color:var(--red);text-shadow:0 2px 0 var(--card);pointer-events:none;animation:pop 1s ease-out forwards}
-@keyframes pop{0%{opacity:0;transform:translateY(6px)}20%{opacity:1;transform:none}100%{opacity:0;transform:translateY(-22px)}}
-.verdict{position:absolute;left:50%;top:10px;transform:translateX(-50%);z-index:3;background:var(--mark);color:var(--markInk);font-weight:900;font-size:12.5px;padding:4px 10px;border-radius:999px;white-space:nowrap;max-width:94%;overflow:hidden;text-overflow:ellipsis}
+/* 情報ボックス */
+.ibox{position:absolute;z-index:5;background:var(--box);border:2.5px solid var(--boxEdge);color:var(--txt);font-family:var(--dot);
+  box-shadow:inset 0 -3px 0 var(--boxShade);padding:5px 9px 6px;display:flex;flex-direction:column;gap:3px;min-width:50%}
+.ibox.cpu{left:3%;top:6%;border-radius:4px 14px 4px 4px}
+.ibox.me{right:3%;bottom:6%;border-radius:14px 4px 4px 4px}
+.ibox .nm{display:flex;align-items:baseline;gap:6px;font-size:14px;line-height:1.1}
+.ibox .nm b{font-weight:400;flex:1;white-space:nowrap}
+.ibox .nm span{font-size:12px}
+.ibox .tag{font-size:10px;color:#666;line-height:1}
+.hprow{display:flex;align-items:center;gap:4px}
+.hprow em{font:700 9px var(--body);font-style:normal;background:var(--hpBg);color:#F2C431;padding:0 4px;border-radius:3px;line-height:13px;letter-spacing:.05em}
+.hpbar{flex:1;height:7px;background:var(--hpBg);border-radius:4px;padding:1.5px;display:flex}
+.hpbar i{display:block;height:100%;width:100%;background:var(--hpG);border-radius:3px}
+.hpbar i.mid{background:var(--hpY)} .hpbar i.low{background:var(--hpR)}
+.hpnum{font-size:13px;text-align:right;font-variant-numeric:tabular-nums;line-height:1}
+.verdict{position:absolute;left:50%;top:44%;transform:translateX(-50%);z-index:6;background:rgba(43,43,51,.82);color:#fff;font:400 12px var(--dot);padding:3px 10px;border-radius:999px;white-space:nowrap;max-width:94%;overflow:hidden;text-overflow:ellipsis}
 
-/* message */
-.msg{background:var(--msg);border:2px solid var(--ink);border-radius:10px;padding:10px 12px;min-height:3.6em;font-size:15px;font-weight:700;line-height:1.5;position:relative}
-.msg::after{content:"";position:absolute;inset:3px;border:1px solid var(--line);border-radius:7px;pointer-events:none}
+/* メッセージ窓 */
+.win{position:relative;background:var(--win);margin:0 3px;border:3px solid var(--winEdge);border-radius:8px;box-shadow:inset 0 0 0 2px var(--winIn);
+  min-height:4.4em;padding:9px 14px;font:400 16px/1.55 var(--dot);color:var(--txt)}
+.win .more{position:absolute;right:10px;bottom:6px;color:#E8483A;font-size:12px;animation:bob .6s steps(2) infinite}
+@keyframes bob{50%{transform:translateY(2px)}}
 
-/* history */
+/* 技パネル */
+.cmd{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:3px 3px 4px;background:#2B2B33}
+.mv{position:relative;border:2px solid #fff;outline:2px solid var(--fightLo);background:linear-gradient(var(--fight),#A84522);color:#fff;border-radius:10px;
+  padding:8px 10px 7px;display:flex;flex-direction:column;align-items:flex-start;gap:2px;font-family:var(--dot);text-align:left;min-height:56px}
+.mv:active:not(:disabled){filter:brightness(1.12);transform:translateY(1px)}
+.mv:disabled{filter:grayscale(.7) brightness(.8)}
+.mv .n{font-size:16px;line-height:1.1;text-shadow:0 1px 0 rgba(0,0,0,.35)}
+.mv .s{font-size:11px;opacity:.95;display:flex;gap:8px;width:100%}
+.mv .s b{font-weight:400;background:rgba(0,0,0,.25);padding:0 5px;border-radius:3px}
+.mv .s span:last-child{margin-left:auto}
+.mv.empty{background:#4A4A55;outline-color:#2B2B33;border-color:#6A6A75;color:#9A9AA5;cursor:default;align-items:center;justify-content:center}
+.mv .pri{position:absolute;right:8px;top:7px;font-size:10px;background:#fff;color:var(--fightLo);border-radius:3px;padding:0 4px}
+
+/* 流れ・下のボタン */
 .hist{display:flex;gap:4px;overflow-x:auto;min-height:26px;align-items:center;scrollbar-width:none}
 .hist::-webkit-scrollbar{display:none}
-.hist .t{flex:none;display:flex;flex-direction:column;align-items:center;font-size:9.5px;font-weight:900;line-height:1.15;border:1px solid var(--line);border-radius:5px;padding:2px 4px;background:var(--card)}
-.hist .t span:first-child{color:var(--ink2)}
+.hist .t{flex:none;display:flex;flex-direction:column;align-items:center;font:400 9.5px/1.2 var(--dot);border:1px solid var(--line);border-radius:5px;padding:2px 4px;background:var(--card)}
+.hist .t span:first-child{color:var(--red)}
 .hist .empty{font-size:11.5px;color:var(--ink2)}
-.c-focus{color:var(--focus)} .c-mach{color:var(--mach)} .c-upper{color:var(--upper)}
-
-/* moves */
-.moves{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
-.mv{border:2px solid var(--mc);background:var(--card);border-radius:10px;padding:8px 4px 7px;display:flex;flex-direction:column;align-items:center;gap:3px;
-  box-shadow:0 3px 0 var(--mc);transition:transform .1s,box-shadow .1s}
-.mv:active:not(:disabled){transform:translateY(3px);box-shadow:none}
-.mv:disabled{opacity:.4}
-.mv .n{font-weight:900;font-size:14.5px;color:var(--mc);white-space:nowrap}
-.mv .s{font-size:10.5px;color:var(--ink2);font-variant-numeric:tabular-nums}
-.mv .p{font-size:10.5px;font-weight:700;font-variant-numeric:tabular-nums}
-.mv.focus{--mc:var(--focus)} .mv.mach{--mc:var(--mach)} .mv.upper{--mc:var(--upper)}
 .foot{display:flex;gap:6px;justify-content:center;flex-wrap:wrap}
+.icon-btn{border:1.5px solid var(--ink);background:var(--card);border-radius:999px;padding:5px 11px;font-weight:700;font-size:12.5px;white-space:nowrap}
 
-/* sheet */
+/* シート */
 .scrim{position:fixed;inset:0;background:rgba(10,16,32,.5);display:flex;align-items:flex-end;justify-content:center;z-index:20}
 .sheet{width:100%;max-width:520px;max-height:86%;overflow:auto;background:var(--paper);border-radius:16px 16px 0 0;border:2px solid var(--ink);border-bottom:0;
   padding:16px max(16px,env(safe-area-inset-right,0px)) calc(18px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:12px}
@@ -129,16 +138,15 @@ td.w{color:var(--ok);font-weight:700} td.l{color:var(--red);font-weight:700} td.
 .big-btn{border:2px solid var(--ink);background:var(--mark);color:var(--markInk);border-radius:12px;padding:12px;font-weight:900;font-size:15px}
 .ghost-btn{border:1.5px solid var(--ink);background:var(--card);border-radius:12px;padding:10px;font-weight:700;font-size:14px}
 .result{font:400 30px var(--display);text-align:center;margin:4px 0 0}
-.result.win{color:var(--ok)} .result.lose{color:var(--red)}
+.result.win2{color:var(--ok)} .result.lose{color:var(--red)}
 .rev{text-align:center;font-size:14px;font-weight:700}
 .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;text-align:center}
 .stats div{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 4px;font-size:11px;color:var(--ink2)}
 .stats b{display:block;font-size:17px;color:var(--ink);font-variant-numeric:tabular-nums}
 .loglist{display:flex;flex-direction:column;gap:2px;font-size:13px;line-height:1.55}
 .loglist .turn{font-weight:900;margin-top:6px;color:var(--ink2);font-size:12px}
-
-@media (max-height:640px){.ring{min-height:110px}.msg{font-size:14px;min-height:3.2em;padding:8px 10px}.mv{padding:6px 4px 5px}}
-@media (prefers-reduced-motion: reduce){.fighter,.pop,.hp i{animation:none!important;transition:none!important}}
+@media (max-height:680px){.field{max-height:38vh;max-height:38dvh}.win{min-height:3.6em;font-size:15px;padding:7px 12px}.mv{min-height:48px;padding:6px 9px 5px}.mv .n{font-size:15px}}
+@media (prefers-reduced-motion: reduce){.mon,.burst,.flash,.win .more{animation:none!important;transition:none!important}}
 </style>
 
 </head>
@@ -150,26 +158,29 @@ td.w{color:var(--ok);font-weight:700} td.l{color:var(--red);font-weight:700} td.
     <span class="streak" id="streak">0連勝</span>
   </header>
 
-  <div class="plate" id="plCpu">
-    <div class="row"><b>あいての エビワラー</b><span class="who" id="cpuWho">性格：？？？</span><span class="hpnum" id="cpuPct">100%</span></div>
-    <div class="hp"><i id="hpCpu"></i></div>
+  <div class="screen">
+    <div class="field" id="ring">
+      <div class="plat cpu"></div><div class="plat me"></div>
+      <div class="mon" id="fCpu"></div>
+      <div class="mon" id="fMe"></div>
+      <div class="ibox cpu">
+        <div class="nm"><b>エビワラー</b><span>Lv50</span></div>
+        <div class="tag" id="cpuWho">せいかく：？？？</div>
+        <div class="hprow"><em>HP</em><div class="hpbar"><i id="hpCpu"></i></div></div>
+      </div>
+      <div class="ibox me">
+        <div class="nm"><b>エビワラー</b><span>Lv50</span></div>
+        <div class="tag" id="meAb"></div>
+        <div class="hprow"><em>HP</em><div class="hpbar"><i id="hpMe"></i></div></div>
+        <div class="hpnum" id="meHp">157/ 157</div>
+      </div>
+      <div class="flash" id="flash"></div>
+    </div>
+    <div class="win" id="msg" aria-live="polite"></div>
+    <div class="cmd" id="moves"></div>
   </div>
 
-  <div class="ring" id="ring">
-    <div class="fighter" id="fMe"></div>
-    <div class="fighter" id="fCpu"></div>
-  </div>
-
-  <div class="plate" id="plMe">
-    <div class="row"><b>エビワラー</b><span class="who" id="meAb"></span><span class="hpnum" id="meHp">157/157</span></div>
-    <div class="hp"><i id="hpMe"></i></div>
-  </div>
-
-  <div class="msg" id="msg" aria-live="polite">どの技で戦う？</div>
   <div class="hist" id="hist"></div>
-
-  <div class="moves" id="moves"></div>
-
   <div class="foot">
     <button class="icon-btn" id="bHelp" type="button">相性とダメージ</button>
     <button class="icon-btn" id="bLog" type="button">ログ</button>
@@ -231,7 +242,7 @@ let B=null,busy=false;
 function newMatch(){
   const pers=S.cpu==='auto'?['random','focus','reader','deep'][Math.random()*4|0]:S.cpu;
   B={me:makeMon(0),cpu:makeMon(1),pers,hidden:S.cpu==='auto',turn:0,hist:[],log:[],over:false};
-  renderAll();setMsg('どの技で戦う？');
+  renderAll();intro();
 }
 
 /* ================= CPU ================= */
@@ -260,27 +271,33 @@ function cpuChoose(){
 /* ================= turn resolution ================= */
 const sleep=ms=>new Promise(r=>setTimeout(r,S.fast?ms*.45:ms));
 const nm=m=>m.side===0?'エビワラー':'あいての エビワラー';
-async function say(t,ms=900){setMsg(t);B.log.push(t);await sleep(ms)}
+let typing=null;
+function setMsg(t,instant){
+  const el=$('#msg');if(typing){clearInterval(typing.iv);typing=null}
+  if(instant||matchMedia('(prefers-reduced-motion: reduce)').matches){el.textContent=t;return Promise.resolve()}
+  return new Promise(res=>{let i=0;el.textContent='';const step=S.fast?1:1,spd=S.fast?12:28;
+    typing={t,iv:setInterval(()=>{i+=step;el.textContent=t.slice(0,i);if(i>=t.length){clearInterval(typing.iv);typing=null;res()}},spd),res};})
+}
+function waitMark(on){const el=$('#msg');const m=el.querySelector('.more');if(on&&!m)el.insertAdjacentHTML('beforeend','<span class="more">▼</span>');if(!on&&m)m.remove()}
+async function say(t,ms=700){B.log.push(t);await setMsg(t);waitMark(true);await sleep(ms);waitMark(false)}
 async function playTurn(myMove){
-  if(busy||B.over)return;busy=true;renderMoves();
+  if(busy||B.over)return;busy=true;renderMoves();Sfx.play('tap');
   const cpuMove=cpuChoose();
   B.turn++;B.log.push({turn:B.turn});
   const mons=[B.me,B.cpu],choice=[myMove,cpuMove];
   const st=mons.map((m,i)=>({mon:m,move:MOVES[choice[i]],moved:false,damaged:false,flinch:false}));
   st[0].foe=st[1];st[1].foe=st[0];
-  // 素早さ：同速なら50%
   const tieWinner=Math.random()<.5?0:1;
   const order=[...st].sort((a,b)=>b.move.pri-a.move.pri||b.mon.spe-a.mon.spe||(a.mon.side===tieWinner?-1:1));
   const tieMatters=st[0].move.pri===st[1].move.pri&&st[0].mon.spe===st[1].mon.spe;
-  // きあいパンチの溜め
-  for(const s of st)if(s.move.key==='focus'){fighter(s.mon).classList.add('focus');await say(`${nm(s.mon)}は 集中力を 高めている！`,800)}
-  if(tieMatters)await say(`同速勝負！ ${order[0].mon.side===0?'あなた':'あいて'}が 先に動いた`,800);
+  for(const s of st)if(s.move.key==='focus'){fighter(s.mon).classList.add('focus');await say(`${nm(s.mon)}は 集中力を 高めている！`,650)}
+  if(tieMatters)B.log.push(`（同速勝負：${order[0].mon.side===0?'あなた':'あいて'}が先）`);
   for(const s of order){
     const me=s.mon,foe=s.foe;
     if(me.hp<=0||foe.mon.hp<=0)break;
     if(s.flinch){s.moved=true;await say(`${nm(me)}は ひるんで 技が だせない！`);continue}
     me.pp[s.move.key]--;renderMoves();
-    await say(`${nm(me)}の ${s.move.name}！`,650);
+    await say(`${nm(me)}の ${s.move.name}！`,350);
     s.moved=true;
     if(s.move.key==='focus'&&s.damaged){fighter(me).classList.remove('focus');await say(`${nm(me)}は 集中が 途切れて 技が 出せない！`);continue}
     if(s.move.key==='upper'){
@@ -291,39 +308,44 @@ async function playTurn(myMove){
     await strike(me,foe.mon,s.move);
     foe.damaged=true;
     if(s.move.key==='upper'&&!foe.moved&&foe.mon.hp>0){
-      if(foe.mon.ability==='inner')await say(`${nm(foe.mon)}は せいしんりょくで ひるまない！`,800);
+      if(foe.mon.ability==='inner')await say(`${nm(foe.mon)}は せいしんりょくで ひるまない！`,650);
       else foe.flinch=true;
     }
-    if(foe.mon.hp<=0){fighter(foe.mon).classList.add('down');await say(`${nm(foe.mon)}は たおれた！`,1000)}
+    if(foe.mon.hp<=0){fighter(foe.mon).classList.add('faint');Sfx.play('ng');await say(`${nm(foe.mon)}は たおれた！`,900)}
   }
   mons.forEach(m=>fighter(m).classList.remove('focus'));
   B.hist.push({me:myMove,cpu:cpuMove});renderHist();
   showVerdict(myMove,cpuMove);
   if(B.me.hp<=0||B.cpu.hp<=0){await endMatch();}
   else{
-    if(ORDER.every(k=>B.me.pp[k]<=0)){B.me.hp=0;await say('PPが なくなった！');await endMatch();}
-    else setMsg('どの技で戦う？');
+    if(ORDER.every(k=>B.me.pp[k]<=0)){B.me.hp=0;await say('つかえる 技が なくなった！');await endMatch();}
+    else setMsg('エビワラーは どうする？',true);
   }
   busy=false;renderMoves();
 }
 async function strike(a,d,mv){
-  const crit=S.crit&&Math.random()<(a.ability==='keen'?1/24:1/24);
+  const crit=S.crit&&Math.random()<1/24;
   const r=S.roll?85+(Math.random()*16|0):100;
-  const dmg=Math.min(d.hp,finalDmg(a,d,mv,crit,r));Sfx.play('punch');
-  const f=fighter(a);f.classList.remove('lunge-r','lunge-l','quick-r','quick-l');void f.offsetWidth;
-  f.classList.add((mv.pri>0?'quick-':'lunge-')+(a.side===0?'r':'l'));
-  await sleep(180);
-  d.hp-=dmg;const g=fighter(d);g.classList.remove('hit');void g.offsetWidth;g.classList.add('hit');
-  popDmg(d,a.side===0?Math.round(dmg/d.max*100)+'%':dmg);
-  renderHp();
+  const dmg=Math.min(d.hp,finalDmg(a,d,mv,crit,r));
+  const f=fighter(a),cls=a.side===0?'atk-me':'atk-cpu';f.classList.remove('atk-me','atk-cpu');void f.offsetWidth;f.classList.add(cls);
+  await sleep(140);
+  Sfx.play('punch');burst(d,mv);if(crit){const fl=$('#flash');fl.classList.remove('on');void fl.offsetWidth;fl.classList.add('on')}
+  const g=fighter(d);g.classList.remove('blink');void g.offsetWidth;g.classList.add('blink');
+  const before=d.hp;d.hp-=dmg;
+  await animateHp(d,before);
   B.log.push(`→ ${nm(d)}に ${dmg}ダメージ（${Math.round(dmg/d.max*100)}%）`);
-  await sleep(500);
-  if(crit)await say('急所に 当たった！',750);
+  if(crit)await say('きゅうしょに あたった！',600);
 }
+function burst(d,mv){const host=$('#ring'),t=fighter(d).getBoundingClientRect(),h=host.getBoundingClientRect();
+  const b=document.createElement('div');b.className='burst';
+  b.innerHTML=`<svg viewBox="0 0 100 100"><polygon points="${[...Array(16)].map((_,i)=>{const a=i*Math.PI/8,rr=i%2?22:48;return `${50+Math.cos(a)*rr},${50+Math.sin(a)*rr}`}).join(' ')}" fill="${mv.key==='focus'?'#FF8A3D':mv.key==='mach'?'#FFE36B':'#FFFFFF'}" stroke="#2B2B33" stroke-width="3"/></svg>`;
+  b.style.left=(t.left-h.left+t.width*.37)+'px';b.style.top=(t.top-h.top+t.height*.25)+'px';host.appendChild(b);setTimeout(()=>b.remove(),420)}
+function animateHp(m,from){return new Promise(res=>{const to=Math.max(0,m.hp),t0=performance.now(),dur=Math.min(900,Math.max(300,(from-to)*6));
+  const tick=t=>{const k=Math.min(1,(t-t0)/dur),v=Math.round(from+(to-from)*k);drawHp(m,v);if(k<1)requestAnimationFrame(tick);else res()};requestAnimationFrame(tick)})}
 function verdictText(a,b){
   if(a===b)return `どちらも ${MOVES[a].name}`;
-  if(BEATS[a]===b)return `${MOVES[a].name} が ${MOVES[b].name} に勝ち`;
-  return `${MOVES[b].name} が ${MOVES[a].name} に勝ち`;
+  if(BEATS[a]===b)return `あなたの ${MOVES[a].name} の勝ち`;
+  return `あいての ${MOVES[b].name} の勝ち`;
 }
 let vT=null;
 function showVerdict(a,b){
@@ -335,10 +357,10 @@ async function endMatch(){
   B.over=true;const win=B.cpu.hp<=0&&B.me.hp>0;
   Sfx.play(win?'clear':'lose');
   if(win){REC.win++;REC.streak++;REC.best=Math.max(REC.best,REC.streak)}else{REC.lose++;REC.streak=0}
-  store.set('rec',REC);renderAll();
-  await sleep(400);
+  store.set('rec',REC);renderAll(true);
+  await say(win?'しょうぶに かった！':'めのまえが まっしろに なった…',500);
   const p=PERS[B.pers];
-  sheet(`<p class="result ${win?'win':'lose'}">${win?'勝ち！':'負け…'}</p>
+  sheet(`<p class="result ${win?'win2':'lose'}">${win?'勝ち！':'負け…'}</p>
     <p class="rev">あいての性格は「${p.name}」<br><span class="note">${p.hint}</span></p>
     <div class="stats"><div>連勝<b>${REC.streak}</b></div><div>最高連勝<b>${REC.best}</b></div><div>通算<b>${REC.win}勝${REC.lose}敗</b></div></div>
     <button class="big-btn" data-act="next" type="button">${win?'次の相手と戦う':'もう一度'}</button>`,false);
@@ -347,54 +369,78 @@ async function endMatch(){
 /* ================= rendering ================= */
 const $=s=>document.querySelector(s);
 const fighter=m=>m.side===0?$('#fMe'):$('#fCpu');
-function boxerSVG(glove,trunk,band){
-  return `<svg viewBox="0 0 100 100" aria-hidden="true">
-  <ellipse cx="50" cy="95" rx="28" ry="4" fill="rgba(0,0,0,.18)"/>
-  <rect x="37" y="66" width="10" height="26" rx="4" fill="#C98E5E"/><rect x="53" y="66" width="10" height="26" rx="4" fill="#C98E5E"/>
-  <rect x="34" y="88" width="15" height="7" rx="3" fill="#2B2B33"/><rect x="51" y="88" width="15" height="7" rx="3" fill="#2B2B33"/>
-  <rect x="33" y="40" width="34" height="30" rx="10" fill="#D9A374"/>
-  <rect x="33" y="58" width="34" height="13" rx="4" fill="${trunk}"/><rect x="33" y="58" width="34" height="3" fill="${band}"/>
-  <circle cx="50" cy="26" r="15" fill="#D9A374"/>
-  <path d="M35 24 Q50 4 65 24 L65 20 Q50 2 35 20Z" fill="${band}"/>
-  <rect x="35" y="20" width="30" height="5" rx="2" fill="${band}"/>
-  <circle cx="56" cy="27" r="2.3" fill="#1B1B22"/><path d="M53 34 Q57 36 61 33" stroke="#1B1B22" stroke-width="1.8" fill="none" stroke-linecap="round"/>
-  <path d="M42 46 Q36 52 40 58" stroke="#C98E5E" stroke-width="7" fill="none" stroke-linecap="round"/>
-  <circle cx="44" cy="58" r="9" fill="${glove}"/><circle cx="41" cy="55" r="2.5" fill="rgba(255,255,255,.35)"/>
-  <path d="M60 46 Q72 44 76 38" stroke="#C98E5E" stroke-width="7" fill="none" stroke-linecap="round"/>
-  <circle cx="79" cy="36" r="10" fill="${glove}"/><circle cx="76" cy="32" r="2.8" fill="rgba(255,255,255,.35)"/>
-  </svg>`;
-}
-function renderHp(){
-  for(const [m,bar] of [[B.me,'#hpMe'],[B.cpu,'#hpCpu']]){
-    const pct=Math.max(0,m.hp/m.max*100),el=$(bar);el.style.width=pct+'%';el.className=pct>50?'':pct>20?'mid':'low';
-  }
-  $('#meHp').textContent=`${Math.max(0,B.me.hp)}/${B.me.max}`;
-  $('#cpuPct').textContent=Math.ceil(Math.max(0,B.cpu.hp)/B.cpu.max*100)+'%';
-}
+// オリジナルのモンスター「パンチの子」（正面：あいて／後ろ姿：じぶん）。グローブの色で見分ける
+const FUR='#F2A65A',FUR2='#D9823A',BELLY='#FFE9C2',INK='#2B2B33';
+function frontSVG(){return `<svg viewBox="0 0 100 100" aria-hidden="true">
+  <ellipse cx="50" cy="95" rx="24" ry="4" fill="rgba(0,0,0,.18)"/>
+  <path d="M71 74q18 2 14-14q-2-8-9-6q-6 2-3 8" fill="none" stroke="${INK}" stroke-width="8" stroke-linecap="round"/>
+  <path d="M71 74q18 2 14-14q-2-8-9-6q-6 2-3 8" fill="none" stroke="${FUR}" stroke-width="4.5" stroke-linecap="round"/>
+  <ellipse cx="39" cy="91" rx="9" ry="5" fill="${FUR2}" stroke="${INK}" stroke-width="2"/><ellipse cx="61" cy="91" rx="9" ry="5" fill="${FUR2}" stroke="${INK}" stroke-width="2"/>
+  <ellipse cx="50" cy="72" rx="23" ry="20" fill="${FUR}" stroke="${INK}" stroke-width="2.2"/>
+  <ellipse cx="50" cy="76" rx="14" ry="13" fill="${BELLY}"/>
+  <path d="M30 26L24 4L44 18Z" fill="${FUR}" stroke="${INK}" stroke-width="2.2" stroke-linejoin="round"/><path d="M70 26L76 4L56 18Z" fill="${FUR}" stroke="${INK}" stroke-width="2.2" stroke-linejoin="round"/>
+  <path d="M31 21L28 10L38 17Z" fill="#F7A3B7"/><path d="M69 21L72 10L62 17Z" fill="#F7A3B7"/>
+  <ellipse cx="50" cy="38" rx="25" ry="21" fill="${FUR}" stroke="${INK}" stroke-width="2.2"/>
+  <path d="M26 30q24-9 48 0v6q-24-8-48 0z" fill="#D2433A" stroke="${INK}" stroke-width="1.6"/>
+  <path d="M74 32l9-5l-2 7l7 1l-12 2z" fill="#D2433A" stroke="${INK}" stroke-width="1.4" stroke-linejoin="round"/>
+  <ellipse cx="41" cy="42" rx="4.4" ry="5.6" fill="${INK}"/><ellipse cx="59" cy="42" rx="4.4" ry="5.6" fill="${INK}"/>
+  <circle cx="42.4" cy="40" r="1.7" fill="#fff"/><circle cx="60.4" cy="40" r="1.7" fill="#fff"/>
+  <path d="M35 37l9 2M65 37l-9 2" stroke="${INK}" stroke-width="2.2" stroke-linecap="round"/>
+  <ellipse cx="34" cy="49" rx="4" ry="2.5" fill="#F27C7C" opacity=".7"/><ellipse cx="66" cy="49" rx="4" ry="2.5" fill="#F27C7C" opacity=".7"/>
+  <path d="M45 50q5 4 10 0" fill="none" stroke="${INK}" stroke-width="1.8" stroke-linecap="round"/><path d="M47 50.6l1.4 2.6l1.4-2" fill="#fff" stroke="${INK}" stroke-width=".9"/>
+  <path d="M30 64q-9-2-10-12" fill="none" stroke="${INK}" stroke-width="8" stroke-linecap="round"/><path d="M30 64q-9-2-10-12" fill="none" stroke="${FUR}" stroke-width="4.5" stroke-linecap="round"/>
+  <path d="M70 64q9-2 10-12" fill="none" stroke="${INK}" stroke-width="8" stroke-linecap="round"/><path d="M70 64q9-2 10-12" fill="none" stroke="${FUR}" stroke-width="4.5" stroke-linecap="round"/>
+  <circle cx="19" cy="49" r="11" fill="#D2433A" stroke="${INK}" stroke-width="2.2"/><circle cx="81" cy="49" r="11" fill="#D2433A" stroke="${INK}" stroke-width="2.2"/>
+  <circle cx="15.5" cy="45" r="3.2" fill="rgba(255,255,255,.5)"/><circle cx="77.5" cy="45" r="3.2" fill="rgba(255,255,255,.5)"/>
+  <rect x="13" y="57" width="12" height="5" rx="2" fill="#fff" stroke="${INK}" stroke-width="1.4"/><rect x="75" y="57" width="12" height="5" rx="2" fill="#fff" stroke="${INK}" stroke-width="1.4"/>
+  </svg>`}
+function backSVG(){return `<svg viewBox="0 0 100 100" aria-hidden="true">
+  <ellipse cx="50" cy="86" rx="31" ry="26" fill="${FUR}" stroke="${INK}" stroke-width="2.4"/>
+  <path d="M27 40L20 12L44 28Z" fill="${FUR}" stroke="${INK}" stroke-width="2.4" stroke-linejoin="round"/><path d="M73 40L80 12L56 28Z" fill="${FUR}" stroke="${INK}" stroke-width="2.4" stroke-linejoin="round"/>
+  <ellipse cx="50" cy="50" rx="29" ry="24" fill="${FUR}" stroke="${INK}" stroke-width="2.4"/>
+  <path d="M38 58q12 6 24 0" fill="none" stroke="${FUR2}" stroke-width="2"/>
+  <path d="M21 44q29-10 58 0v7q-29-9-58 0z" fill="#2F63D3" stroke="${INK}" stroke-width="1.8"/>
+  <path d="M50 46l-4 16l6-4l4 7l1-17z" fill="#2F63D3" stroke="${INK}" stroke-width="1.6" stroke-linejoin="round"/>
+  <path d="M50 108q6-14 18-12q10 2 6 12" fill="none" stroke="${INK}" stroke-width="9" stroke-linecap="round"/><path d="M50 108q6-14 18-12q10 2 6 12" fill="none" stroke="${FUR}" stroke-width="5.5" stroke-linecap="round"/>
+  <path d="M22 80q-12-6-10-22" fill="none" stroke="${INK}" stroke-width="10" stroke-linecap="round"/><path d="M22 80q-12-6-10-22" fill="none" stroke="${FUR}" stroke-width="6" stroke-linecap="round"/>
+  <path d="M78 80q12-6 10-22" fill="none" stroke="${INK}" stroke-width="10" stroke-linecap="round"/><path d="M78 80q12-6 10-22" fill="none" stroke="${FUR}" stroke-width="6" stroke-linecap="round"/>
+  <circle cx="13" cy="54" r="13" fill="#2F63D3" stroke="${INK}" stroke-width="2.4"/><circle cx="87" cy="54" r="13" fill="#2F63D3" stroke="${INK}" stroke-width="2.4"/>
+  <circle cx="9" cy="49" r="4" fill="rgba(255,255,255,.45)"/><circle cx="83" cy="49" r="4" fill="rgba(255,255,255,.45)"/>
+  </svg>`}
+function hpClass(p){return p>50?'':p>20?'mid':'low'}
+function drawHp(m,v){const pct=Math.max(0,v/m.max*100);
+  const el=$(m.side===0?'#hpMe':'#hpCpu');el.style.width=pct+'%';el.className=hpClass(pct);
+  if(m.side===0)$('#meHp').textContent=`${Math.max(0,v)}/ ${m.max}`}
+function renderHp(){drawHp(B.me,B.me.hp);drawHp(B.cpu,B.cpu.hp)}
 function renderMoves(){
   $('#moves').innerHTML=ORDER.map(k=>{const m=MOVES[k],pp=B.me.pp[k];
     return `<button class="mv ${k}" type="button" data-mv="${k}" ${busy||B.over||pp<=0?'disabled':''}>
-      <span class="n">${m.name}</span><span class="s">優先度${m.pri>0?'+':''}${m.pri}・威力${power(B.me,m)}</span><span class="p">PP ${pp}/${m.pp}</span></button>`}).join('');
+      <span class="pri">${m.pri>0?'+':''}${m.pri}</span><span class="n">${m.name}</span><span class="s"><b>かくとう</b><span>PP ${pp}/${m.pp}</span></span></button>`}).join('')
+    +'<button class="mv empty" type="button" disabled>－</button>';
 }
 function renderHist(){
   const h=B.hist;
-  $('#hist').innerHTML=h.length?h.map((t,i)=>`<div class="t" title="${i+1}ターン目"><span class="c-${t.cpu}">${MOVES[t.cpu].name.slice(0,2)}</span><span class="c-${t.me}">${MOVES[t.me].name.slice(0,2)}</span></div>`).join('')
-    :'<span class="empty">上があいて、下があなたの出した技。ここで流れを読む</span>';
+  $('#hist').innerHTML=h.length?h.map((t,i)=>`<div class="t" title="${i+1}ターン目"><span>${MOVES[t.cpu].name.slice(0,2)}</span><span>${MOVES[t.me].name.slice(0,2)}</span></div>`).join('')
+    :'<span class="empty">上が あいて、下が あなたの出した技。流れを読もう</span>';
   $('#hist').scrollLeft=1e6;
 }
-function renderAll(){
-  $('#fMe').innerHTML=boxerSVG('var(--blue)','#2F63D3','#18264A');
-  $('#fCpu').innerHTML=boxerSVG('var(--red)','#D2433A','#5A1A14');
-  $('#fMe').className='fighter'+(B.me.hp<=0?' down':'');$('#fCpu').className='fighter'+(B.cpu.hp<=0?' down':'');
-  $('#cpuWho').textContent='性格：'+(B.hidden&&!B.over?'？？？':PERS[B.pers].name);
-  $('#meAb').textContent=ABIL[B.me.ability];
+function renderAll(keep){
+  if(!keep){$('#fMe').innerHTML=backSVG();$('#fCpu').innerHTML=frontSVG()}
+  $('#fMe').className='mon'+(B.me.hp<=0?' faint':'');$('#fCpu').className='mon'+(B.cpu.hp<=0?' faint':'');
+  $('#cpuWho').textContent='せいかく：'+(B.hidden&&!B.over?'？？？':PERS[B.pers].name);
+  $('#meAb').textContent='とくせい：'+ABIL[B.me.ability];
   $('#streak').textContent=`${REC.streak}連勝`;
   renderHp();renderMoves();renderHist();
 }
-function setMsg(t){$('#msg').textContent=t}
-function popDmg(m,t){const f=fighter(m),r=$('#ring').getBoundingClientRect(),b=f.getBoundingClientRect();
-  const p=document.createElement('div');p.className='pop';p.textContent='-'+t;p.style.left=(b.left-r.left+b.width*.35)+'px';p.style.top=(b.top-r.top)+'px';
-  $('#ring').appendChild(p);setTimeout(()=>p.remove(),1000)}
+async function intro(){
+  busy=true;renderMoves();
+  const c=$('#fCpu'),m=$('#fMe');c.classList.add('enter-r');m.classList.add('enter-l');
+  await sleep(60);c.classList.remove('enter-r');
+  await say('あいての エビワラーが しょうぶを しかけてきた！',600);
+  m.classList.remove('enter-l');
+  await say('ゆけっ！ エビワラー！',450);
+  busy=false;renderMoves();setMsg('エビワラーは どうする？',true);
+}
 
 /* ================= sheets ================= */
 function sheet(html,closable=true){
@@ -422,7 +468,7 @@ function helpSheet(){
   </table></div>
   <h3>ダメージの目安（乱数85〜100%、急所なし）</h3>
   <div class="tbl"><table><tr><th>技</th><th>ダメージ</th><th>割合</th></tr>${ORDER.map(row).join('')}</table></div>
-  <p class="note">お互い いじっぱり H252 A252 S4（HP${a.max}・攻撃${a.atk}・防御${a.def}・素早さ${a.spe}）のレベル50。はやてがえしは、相手が優先度+1〜+3の技を選んでいて、まだ動いていないときだけ成功します。</p>`);
+  <p class="note">絵はオリジナルのモンスターです。お互い いじっぱり H252 A252 S4（HP${a.max}・攻撃${a.atk}・防御${a.def}・素早さ${a.spe}）のレベル50。はやてがえしは、相手が優先度+1〜+3の技を選んでいて、まだ動いていないときだけ成功します。</p>`);
 }
 function logSheet(){
   const h=B.log.map(l=>typeof l==='object'?`<div class="turn">ターン${l.turn}</div>`:`<div>${l}</div>`).join('');
@@ -447,9 +493,11 @@ function setSheet(){
 
 /* ================= events ================= */
 $('#moves').addEventListener('click',e=>{const b=e.target.closest('[data-mv]');if(b&&!b.disabled)playTurn(b.dataset.mv)});
+$('#msg').addEventListener('click',()=>{if(typing){const el=$('#msg');clearInterval(typing.iv);el.textContent=typing.t;const r=typing.res;typing=null;r()}});
 $('#bHelp').onclick=helpSheet;$('#bLog').onclick=logSheet;$('#bSet').onclick=setSheet;
 $('#bNew').onclick=()=>{if(busy)return;if(!B.over&&B.turn>0){REC.streak=0;store.set('rec',REC)}newMatch()};
 document.addEventListener('keydown',e=>{if($('#layer').innerHTML)return;const k={'1':'focus','2':'mach','3':'upper'}[e.key];if(k)playTurn(k)});
+if(typeof Sfx==='undefined')window.Sfx={play(){}};
 newMatch();
 Save.touch({game:'punch'});
 });
