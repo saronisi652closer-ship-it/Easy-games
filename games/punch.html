@@ -1,0 +1,459 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#EBF0F6">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icons/icon-192.png">
+<link rel="stylesheet" href="../common/base.css">
+<title>エビワラージャンケン｜すきま脳トレ箱</title>
+<style>.bar .back{flex:none}</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap">
+<style>
+/* Layout: one-screen ring — opponent plate / ring with two boxers / message window / three punch buttons. Same notebook palette as すきま脳トレ箱 */
+:root{
+  --paper:#EBF0F6; --grid:#D9E1EC; --card:#FFFFFF; --ink:#18264A; --ink2:#5B6886; --line:#C2CDDD;
+  --mark:#F7C843; --markInk:#18264A; --red:#D2433A; --blue:#2F63D3; --ok:#2B8A57; --warn:#E39B1B;
+  --ring:#F4E7CF; --ringLine:#D9C7A4; --rope:#D2433A; --msg:#FFFFFF;
+  --focus:#C8432F; --mach:#2F63D3; --upper:#7A4FC2;
+  --display:"Dela Gothic One","Hiragino Sans","Noto Sans JP",sans-serif;
+  --body:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#111827; --grid:#1A2335; --card:#1B2438; --ink:#E4E9F3; --ink2:#97A3BD; --line:#33405A;
+  --mark:#F2C23A; --markInk:#18264A; --red:#FF6B5F; --blue:#7FA6FF; --ok:#4FC283; --warn:#F2B04A;
+  --ring:#2A2A33; --ringLine:#3D3D4A; --rope:#B8433A; --msg:#1B2438;
+  --focus:#FF7A62; --mach:#7FA6FF; --upper:#B696F0;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#111827; --grid:#1A2335; --card:#1B2438; --ink:#E4E9F3; --ink2:#97A3BD; --line:#33405A;
+  --mark:#F2C23A; --markInk:#18264A; --red:#FF6B5F; --blue:#7FA6FF; --ok:#4FC283; --warn:#F2B04A;
+  --ring:#2A2A33; --ringLine:#3D3D4A; --rope:#B8433A; --msg:#1B2438;
+  --focus:#FF7A62; --mach:#7FA6FF; --upper:#B696F0;
+  color-scheme:dark}
+
+html,body{height:100%}
+body{background:var(--paper);color:var(--ink);font-family:var(--body);overflow:hidden;-webkit-tap-highlight-color:transparent;
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:22px 22px}
+button{font-family:var(--body);color:inherit;cursor:pointer;touch-action:manipulation}
+button:focus-visible{outline:3px solid var(--mark);outline-offset:2px}
+#app{height:100%;max-width:520px;margin:0 auto;display:flex;flex-direction:column;gap:8px;padding-block:10px 12px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+.bar{display:flex;align-items:center;gap:8px}
+.bar h1{font:400 19px var(--display);margin:0;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.streak{font:700 13px var(--body);font-variant-numeric:tabular-nums;background:var(--mark);color:var(--markInk);padding:4px 10px;border-radius:6px;white-space:nowrap}
+.icon-btn{border:1.5px solid var(--ink);background:var(--card);border-radius:999px;padding:5px 11px;font-weight:700;font-size:12.5px;white-space:nowrap}
+
+/* plates */
+.plate{background:var(--card);border:1.5px solid var(--ink);border-radius:10px;padding:7px 10px;display:flex;flex-direction:column;gap:4px;box-shadow:2px 2px 0 var(--ink)}
+.plate .row{display:flex;align-items:baseline;gap:8px}
+.plate b{font-size:14px}
+.plate .who{font-size:11px;font-weight:700;color:var(--ink2)}
+.plate .hpnum{margin-left:auto;font:700 13px var(--body);font-variant-numeric:tabular-nums}
+.hp{height:8px;border-radius:4px;background:var(--line);overflow:hidden}
+.hp i{display:block;height:100%;width:100%;background:var(--ok);border-radius:4px;transition:width .6s ease}
+.hp i.mid{background:var(--warn)} .hp i.low{background:var(--red)}
+.tag{font-size:10.5px;font-weight:900;padding:1px 6px;border-radius:4px;background:var(--grid);color:var(--ink2)}
+
+/* ring */
+.ring{position:relative;flex:1;min-height:150px;border:2px solid var(--ink);border-radius:12px;overflow:hidden;
+  background:linear-gradient(transparent 62%,var(--ring) 62%);}
+.ring::before{content:"";position:absolute;left:0;right:0;top:34%;height:3px;background:var(--rope);box-shadow:0 14px 0 var(--rope),0 28px 0 var(--rope);opacity:.75}
+.ring::after{content:"";position:absolute;left:0;right:0;bottom:0;height:38%;background:repeating-linear-gradient(90deg,transparent 0 46px,var(--ringLine) 46px 48px)}
+.fighter{position:absolute;bottom:9%;width:34%;max-width:150px;aspect-ratio:1;z-index:1}
+.fighter svg{width:100%;height:100%;display:block}
+#fMe{left:8%} #fCpu{right:8%}
+#fCpu svg{transform:scaleX(-1)}
+.fighter.lunge-r{animation:lungeR .35s ease}
+.fighter.lunge-l{animation:lungeL .35s ease}
+.fighter.quick-r{animation:lungeR .2s ease}
+.fighter.quick-l{animation:lungeL .2s ease}
+.fighter.hit{animation:hit .4s ease}
+.fighter.focus svg{filter:drop-shadow(0 0 8px var(--focus))}
+.fighter.down{transform:translateY(18%) rotate(-8deg);opacity:.35;transition:all .5s}
+#fCpu.down{transform:translateY(18%) rotate(8deg)}
+@keyframes lungeR{40%{transform:translateX(60%)}}
+@keyframes lungeL{40%{transform:translateX(-60%)}}
+@keyframes hit{20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}30%{opacity:.4}}
+.pop{position:absolute;z-index:2;font:400 20px var(--display);color:var(--red);text-shadow:0 2px 0 var(--card);pointer-events:none;animation:pop 1s ease-out forwards}
+@keyframes pop{0%{opacity:0;transform:translateY(6px)}20%{opacity:1;transform:none}100%{opacity:0;transform:translateY(-22px)}}
+.verdict{position:absolute;left:50%;top:10px;transform:translateX(-50%);z-index:3;background:var(--mark);color:var(--markInk);font-weight:900;font-size:12.5px;padding:4px 10px;border-radius:999px;white-space:nowrap;max-width:94%;overflow:hidden;text-overflow:ellipsis}
+
+/* message */
+.msg{background:var(--msg);border:2px solid var(--ink);border-radius:10px;padding:10px 12px;min-height:3.6em;font-size:15px;font-weight:700;line-height:1.5;position:relative}
+.msg::after{content:"";position:absolute;inset:3px;border:1px solid var(--line);border-radius:7px;pointer-events:none}
+
+/* history */
+.hist{display:flex;gap:4px;overflow-x:auto;min-height:26px;align-items:center;scrollbar-width:none}
+.hist::-webkit-scrollbar{display:none}
+.hist .t{flex:none;display:flex;flex-direction:column;align-items:center;font-size:9.5px;font-weight:900;line-height:1.15;border:1px solid var(--line);border-radius:5px;padding:2px 4px;background:var(--card)}
+.hist .t span:first-child{color:var(--ink2)}
+.hist .empty{font-size:11.5px;color:var(--ink2)}
+.c-focus{color:var(--focus)} .c-mach{color:var(--mach)} .c-upper{color:var(--upper)}
+
+/* moves */
+.moves{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.mv{border:2px solid var(--mc);background:var(--card);border-radius:10px;padding:8px 4px 7px;display:flex;flex-direction:column;align-items:center;gap:3px;
+  box-shadow:0 3px 0 var(--mc);transition:transform .1s,box-shadow .1s}
+.mv:active:not(:disabled){transform:translateY(3px);box-shadow:none}
+.mv:disabled{opacity:.4}
+.mv .n{font-weight:900;font-size:14.5px;color:var(--mc);white-space:nowrap}
+.mv .s{font-size:10.5px;color:var(--ink2);font-variant-numeric:tabular-nums}
+.mv .p{font-size:10.5px;font-weight:700;font-variant-numeric:tabular-nums}
+.mv.focus{--mc:var(--focus)} .mv.mach{--mc:var(--mach)} .mv.upper{--mc:var(--upper)}
+.foot{display:flex;gap:6px;justify-content:center;flex-wrap:wrap}
+
+/* sheet */
+.scrim{position:fixed;inset:0;background:rgba(10,16,32,.5);display:flex;align-items:flex-end;justify-content:center;z-index:20}
+.sheet{width:100%;max-width:520px;max-height:86%;overflow:auto;background:var(--paper);border-radius:16px 16px 0 0;border:2px solid var(--ink);border-bottom:0;
+  padding:16px max(16px,env(safe-area-inset-right,0px)) calc(18px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:12px}
+.sheet h2{font:400 19px var(--display);margin:0}
+.sheet h3{font-size:13px;margin:4px 0 0;color:var(--ink2)}
+.sheet p{margin:0;font-size:13.5px;line-height:1.65}
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:12.5px;background:var(--card)}
+th,td{border:1px solid var(--line);padding:6px 6px;text-align:left;vertical-align:top}
+th{background:var(--grid);font-weight:900;white-space:nowrap}
+td.w{color:var(--ok);font-weight:700} td.l{color:var(--red);font-weight:700} td.e{color:var(--ink2)}
+.opt{display:flex;flex-direction:column;gap:6px}
+.opt label{font-size:13px;font-weight:700}
+.seg{display:flex;border:1.5px solid var(--ink);border-radius:10px;overflow:hidden;background:var(--card);flex-wrap:wrap}
+.seg button{flex:1;border:0;background:none;padding:8px 6px;font-weight:700;font-size:12.5px;color:var(--ink2);min-width:0}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.note{font-size:12px;color:var(--ink2);line-height:1.6}
+.big-btn{border:2px solid var(--ink);background:var(--mark);color:var(--markInk);border-radius:12px;padding:12px;font-weight:900;font-size:15px}
+.ghost-btn{border:1.5px solid var(--ink);background:var(--card);border-radius:12px;padding:10px;font-weight:700;font-size:14px}
+.result{font:400 30px var(--display);text-align:center;margin:4px 0 0}
+.result.win{color:var(--ok)} .result.lose{color:var(--red)}
+.rev{text-align:center;font-size:14px;font-weight:700}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;text-align:center}
+.stats div{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 4px;font-size:11px;color:var(--ink2)}
+.stats b{display:block;font-size:17px;color:var(--ink);font-variant-numeric:tabular-nums}
+.loglist{display:flex;flex-direction:column;gap:2px;font-size:13px;line-height:1.55}
+.loglist .turn{font-weight:900;margin-top:6px;color:var(--ink2);font-size:12px}
+
+@media (max-height:640px){.ring{min-height:110px}.msg{font-size:14px;min-height:3.2em;padding:8px 10px}.mv{padding:6px 4px 5px}}
+@media (prefers-reduced-motion: reduce){.fighter,.pop,.hp i{animation:none!important;transition:none!important}}
+</style>
+
+</head>
+<body>
+<div id="app">
+  <header class="bar">
+    <a class="back" href="../index.html">‹ 戻る</a>
+    <h1>エビワラージャンケン</h1>
+    <span class="streak" id="streak">0連勝</span>
+  </header>
+
+  <div class="plate" id="plCpu">
+    <div class="row"><b>あいての エビワラー</b><span class="who" id="cpuWho">性格：？？？</span><span class="hpnum" id="cpuPct">100%</span></div>
+    <div class="hp"><i id="hpCpu"></i></div>
+  </div>
+
+  <div class="ring" id="ring">
+    <div class="fighter" id="fMe"></div>
+    <div class="fighter" id="fCpu"></div>
+  </div>
+
+  <div class="plate" id="plMe">
+    <div class="row"><b>エビワラー</b><span class="who" id="meAb"></span><span class="hpnum" id="meHp">157/157</span></div>
+    <div class="hp"><i id="hpMe"></i></div>
+  </div>
+
+  <div class="msg" id="msg" aria-live="polite">どの技で戦う？</div>
+  <div class="hist" id="hist"></div>
+
+  <div class="moves" id="moves"></div>
+
+  <div class="foot">
+    <button class="icon-btn" id="bHelp" type="button">相性とダメージ</button>
+    <button class="icon-btn" id="bLog" type="button">ログ</button>
+    <button class="icon-btn" id="bSet" type="button">設定</button>
+    <button class="icon-btn" id="bNew" type="button">やり直す</button>
+  </div>
+</div>
+<div id="layer"></div>
+
+<script src="../common/save.js"></script>
+<script src="../common/ui.js"></script>
+<script src="../common/sfx.js"></script>
+<script>
+Save.ready.then(()=>{
+/* ================= data ================= */
+const MOVES={
+  focus:{key:'focus',name:'きあいパンチ',pow:150,pri:-3,pp:20,punch:true},
+  mach:{key:'mach',name:'マッハパンチ',pow:40,pri:1,pp:30,punch:true},
+  upper:{key:'upper',name:'はやてがえし',pow:65,pri:3,pp:15,punch:false},
+};
+const ORDER=['focus','mach','upper'];
+const BEATS={mach:'focus',upper:'mach',focus:'upper'}; // key beats value
+const COUNTER={focus:'mach',mach:'upper',upper:'focus'}; // to beat X, play COUNTER[X]
+// Hitmonchan base stats
+const BASE={hp:50,atk:105,def:79,spe:76};
+const ABIL={iron:'てつのこぶし',inner:'せいしんりょく',keen:'するどいめ'};
+const PERS={
+  random:{name:'きまぐれ',hint:'3つの技をほぼ均等に出す'},
+  focus:{name:'一撃狙い',hint:'きあいパンチが大好き'},
+  reader:{name:'読みの名人',hint:'あなたのよく出す技を読んで、それに勝つ技を出す'},
+  deep:{name:'裏の裏',hint:'あなたが自分の前の手に勝ちに来ると読んで、さらにその裏を取る'},
+};
+
+/* ================= storage ================= */
+const store=makeStore('pj_');
+const S=Object.assign({ability:'iron',speed:'tie',crit:true,roll:true,cpu:'auto',fast:false},store.get('settings',{}));
+const REC=Object.assign({streak:0,best:0,win:0,lose:0},store.get('rec',{}));
+
+/* ================= stats & damage ================= */
+const L=50;
+function stat(base,ev,nat,isHp){const v=Math.floor((2*base+31+Math.floor(ev/4))*L/100);return isHp?v+L+10:Math.floor((v+5)*nat)}
+// いじっぱり H252 A252 S4 を基本に、素早さの関係だけ設定で変える
+function makeMon(side){
+  const spe=stat(BASE.spe,4,1);
+  let s=spe;
+  if(S.speed==='faster')s=side===0?spe+1:spe;
+  if(S.speed==='slower')s=side===0?spe:spe+1;
+  return {side,hp:stat(BASE.hp,252,1,true),max:stat(BASE.hp,252,1,true),atk:stat(BASE.atk,252,1.1),def:stat(BASE.def,0,1),spe:s,
+    ability:S.ability,pp:{focus:20,mach:30,upper:15}};
+}
+const pokeRound=x=>{const f=Math.floor(x);return x-f>0.5?f+1:f};
+function power(mon,mv){return mv.punch&&mon.ability==='iron'?pokeRound(mv.pow*4915/4096):mv.pow}
+function baseDmg(a,d,mv){return Math.floor(Math.floor(Math.floor(2*L/5+2)*power(a,mv)*a.atk/d.def)/50)+2}
+function finalDmg(a,d,mv,crit,r){let x=baseDmg(a,d,mv);if(crit)x=Math.floor(x*1.5);x=Math.floor(x*r/100);x=pokeRound(x*1.5);return Math.max(1,x)}
+function range(a,d,mv){return [finalDmg(a,d,mv,false,85),finalDmg(a,d,mv,false,100)]}
+
+/* ================= battle state ================= */
+let B=null,busy=false;
+function newMatch(){
+  const pers=S.cpu==='auto'?['random','focus','reader','deep'][Math.random()*4|0]:S.cpu;
+  B={me:makeMon(0),cpu:makeMon(1),pers,hidden:S.cpu==='auto',turn:0,hist:[],log:[],over:false};
+  renderAll();setMsg('どの技で戦う？');
+}
+
+/* ================= CPU ================= */
+function weighted(w){const t=w.focus+w.mach+w.upper;let r=Math.random()*t;for(const k of ORDER){if((r-=w[k])<0)return k}return 'mach'}
+function cpuChoose(){
+  const h=B.hist,cpu=B.cpu,me=B.me;
+  let w={focus:1,mach:1,upper:1};
+  if(B.pers==='focus')w={focus:2.4,mach:.8,upper:.8};
+  if(B.pers==='reader'&&h.length){
+    const recent=h.slice(-4).map(t=>t.me),cnt={focus:0,mach:0,upper:0};
+    recent.forEach((m,i)=>cnt[m]+=1+i*.5);
+    const pred=ORDER.reduce((a,b)=>cnt[b]>cnt[a]?b:a);
+    w={focus:.5,mach:.5,upper:.5};w[COUNTER[pred]]=3;
+  }
+  if(B.pers==='deep'&&h.length){
+    const myLast=h[h.length-1].cpu,pred=COUNTER[myLast];
+    w={focus:.5,mach:.5,upper:.5};w[COUNTER[pred]]=3;
+  }
+  // とどめが取れるならマッハパンチ寄り
+  const machMin=range(cpu,me,MOVES.mach)[0];
+  if(me.hp<=machMin&&B.pers!=='random')w.mach+=1.5;
+  for(const k of ORDER)if(cpu.pp[k]<=0)w[k]=0;
+  return weighted(w);
+}
+
+/* ================= turn resolution ================= */
+const sleep=ms=>new Promise(r=>setTimeout(r,S.fast?ms*.45:ms));
+const nm=m=>m.side===0?'エビワラー':'あいての エビワラー';
+async function say(t,ms=900){setMsg(t);B.log.push(t);await sleep(ms)}
+async function playTurn(myMove){
+  if(busy||B.over)return;busy=true;renderMoves();
+  const cpuMove=cpuChoose();
+  B.turn++;B.log.push({turn:B.turn});
+  const mons=[B.me,B.cpu],choice=[myMove,cpuMove];
+  const st=mons.map((m,i)=>({mon:m,move:MOVES[choice[i]],moved:false,damaged:false,flinch:false}));
+  st[0].foe=st[1];st[1].foe=st[0];
+  // 素早さ：同速なら50%
+  const tieWinner=Math.random()<.5?0:1;
+  const order=[...st].sort((a,b)=>b.move.pri-a.move.pri||b.mon.spe-a.mon.spe||(a.mon.side===tieWinner?-1:1));
+  const tieMatters=st[0].move.pri===st[1].move.pri&&st[0].mon.spe===st[1].mon.spe;
+  // きあいパンチの溜め
+  for(const s of st)if(s.move.key==='focus'){fighter(s.mon).classList.add('focus');await say(`${nm(s.mon)}は 集中力を 高めている！`,800)}
+  if(tieMatters)await say(`同速勝負！ ${order[0].mon.side===0?'あなた':'あいて'}が 先に動いた`,800);
+  for(const s of order){
+    const me=s.mon,foe=s.foe;
+    if(me.hp<=0||foe.mon.hp<=0)break;
+    if(s.flinch){s.moved=true;await say(`${nm(me)}は ひるんで 技が だせない！`);continue}
+    me.pp[s.move.key]--;renderMoves();
+    await say(`${nm(me)}の ${s.move.name}！`,650);
+    s.moved=true;
+    if(s.move.key==='focus'&&s.damaged){fighter(me).classList.remove('focus');await say(`${nm(me)}は 集中が 途切れて 技が 出せない！`);continue}
+    if(s.move.key==='upper'){
+      const ok=!foe.moved&&foe.move.pri>=1&&foe.move.pri<=3;
+      if(!ok){await say('しかし うまく 決まらなかった！');continue}
+    }
+    fighter(me).classList.remove('focus');
+    await strike(me,foe.mon,s.move);
+    foe.damaged=true;
+    if(s.move.key==='upper'&&!foe.moved&&foe.mon.hp>0){
+      if(foe.mon.ability==='inner')await say(`${nm(foe.mon)}は せいしんりょくで ひるまない！`,800);
+      else foe.flinch=true;
+    }
+    if(foe.mon.hp<=0){fighter(foe.mon).classList.add('down');await say(`${nm(foe.mon)}は たおれた！`,1000)}
+  }
+  mons.forEach(m=>fighter(m).classList.remove('focus'));
+  B.hist.push({me:myMove,cpu:cpuMove});renderHist();
+  showVerdict(myMove,cpuMove);
+  if(B.me.hp<=0||B.cpu.hp<=0){await endMatch();}
+  else{
+    if(ORDER.every(k=>B.me.pp[k]<=0)){B.me.hp=0;await say('PPが なくなった！');await endMatch();}
+    else setMsg('どの技で戦う？');
+  }
+  busy=false;renderMoves();
+}
+async function strike(a,d,mv){
+  const crit=S.crit&&Math.random()<(a.ability==='keen'?1/24:1/24);
+  const r=S.roll?85+(Math.random()*16|0):100;
+  const dmg=Math.min(d.hp,finalDmg(a,d,mv,crit,r));Sfx.play('punch');
+  const f=fighter(a);f.classList.remove('lunge-r','lunge-l','quick-r','quick-l');void f.offsetWidth;
+  f.classList.add((mv.pri>0?'quick-':'lunge-')+(a.side===0?'r':'l'));
+  await sleep(180);
+  d.hp-=dmg;const g=fighter(d);g.classList.remove('hit');void g.offsetWidth;g.classList.add('hit');
+  popDmg(d,a.side===0?Math.round(dmg/d.max*100)+'%':dmg);
+  renderHp();
+  B.log.push(`→ ${nm(d)}に ${dmg}ダメージ（${Math.round(dmg/d.max*100)}%）`);
+  await sleep(500);
+  if(crit)await say('急所に 当たった！',750);
+}
+function verdictText(a,b){
+  if(a===b)return `どちらも ${MOVES[a].name}`;
+  if(BEATS[a]===b)return `${MOVES[a].name} が ${MOVES[b].name} に勝ち`;
+  return `${MOVES[b].name} が ${MOVES[a].name} に勝ち`;
+}
+let vT=null;
+function showVerdict(a,b){
+  const old=document.querySelector('.verdict');if(old)old.remove();
+  const v=document.createElement('div');v.className='verdict';v.textContent=verdictText(a,b);$('#ring').appendChild(v);
+  clearTimeout(vT);vT=setTimeout(()=>v.remove(),2600);
+}
+async function endMatch(){
+  B.over=true;const win=B.cpu.hp<=0&&B.me.hp>0;
+  Sfx.play(win?'clear':'lose');
+  if(win){REC.win++;REC.streak++;REC.best=Math.max(REC.best,REC.streak)}else{REC.lose++;REC.streak=0}
+  store.set('rec',REC);renderAll();
+  await sleep(400);
+  const p=PERS[B.pers];
+  sheet(`<p class="result ${win?'win':'lose'}">${win?'勝ち！':'負け…'}</p>
+    <p class="rev">あいての性格は「${p.name}」<br><span class="note">${p.hint}</span></p>
+    <div class="stats"><div>連勝<b>${REC.streak}</b></div><div>最高連勝<b>${REC.best}</b></div><div>通算<b>${REC.win}勝${REC.lose}敗</b></div></div>
+    <button class="big-btn" data-act="next" type="button">${win?'次の相手と戦う':'もう一度'}</button>`,false);
+}
+
+/* ================= rendering ================= */
+const $=s=>document.querySelector(s);
+const fighter=m=>m.side===0?$('#fMe'):$('#fCpu');
+function boxerSVG(glove,trunk,band){
+  return `<svg viewBox="0 0 100 100" aria-hidden="true">
+  <ellipse cx="50" cy="95" rx="28" ry="4" fill="rgba(0,0,0,.18)"/>
+  <rect x="37" y="66" width="10" height="26" rx="4" fill="#C98E5E"/><rect x="53" y="66" width="10" height="26" rx="4" fill="#C98E5E"/>
+  <rect x="34" y="88" width="15" height="7" rx="3" fill="#2B2B33"/><rect x="51" y="88" width="15" height="7" rx="3" fill="#2B2B33"/>
+  <rect x="33" y="40" width="34" height="30" rx="10" fill="#D9A374"/>
+  <rect x="33" y="58" width="34" height="13" rx="4" fill="${trunk}"/><rect x="33" y="58" width="34" height="3" fill="${band}"/>
+  <circle cx="50" cy="26" r="15" fill="#D9A374"/>
+  <path d="M35 24 Q50 4 65 24 L65 20 Q50 2 35 20Z" fill="${band}"/>
+  <rect x="35" y="20" width="30" height="5" rx="2" fill="${band}"/>
+  <circle cx="56" cy="27" r="2.3" fill="#1B1B22"/><path d="M53 34 Q57 36 61 33" stroke="#1B1B22" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+  <path d="M42 46 Q36 52 40 58" stroke="#C98E5E" stroke-width="7" fill="none" stroke-linecap="round"/>
+  <circle cx="44" cy="58" r="9" fill="${glove}"/><circle cx="41" cy="55" r="2.5" fill="rgba(255,255,255,.35)"/>
+  <path d="M60 46 Q72 44 76 38" stroke="#C98E5E" stroke-width="7" fill="none" stroke-linecap="round"/>
+  <circle cx="79" cy="36" r="10" fill="${glove}"/><circle cx="76" cy="32" r="2.8" fill="rgba(255,255,255,.35)"/>
+  </svg>`;
+}
+function renderHp(){
+  for(const [m,bar] of [[B.me,'#hpMe'],[B.cpu,'#hpCpu']]){
+    const pct=Math.max(0,m.hp/m.max*100),el=$(bar);el.style.width=pct+'%';el.className=pct>50?'':pct>20?'mid':'low';
+  }
+  $('#meHp').textContent=`${Math.max(0,B.me.hp)}/${B.me.max}`;
+  $('#cpuPct').textContent=Math.ceil(Math.max(0,B.cpu.hp)/B.cpu.max*100)+'%';
+}
+function renderMoves(){
+  $('#moves').innerHTML=ORDER.map(k=>{const m=MOVES[k],pp=B.me.pp[k];
+    return `<button class="mv ${k}" type="button" data-mv="${k}" ${busy||B.over||pp<=0?'disabled':''}>
+      <span class="n">${m.name}</span><span class="s">優先度${m.pri>0?'+':''}${m.pri}・威力${power(B.me,m)}</span><span class="p">PP ${pp}/${m.pp}</span></button>`}).join('');
+}
+function renderHist(){
+  const h=B.hist;
+  $('#hist').innerHTML=h.length?h.map((t,i)=>`<div class="t" title="${i+1}ターン目"><span class="c-${t.cpu}">${MOVES[t.cpu].name.slice(0,2)}</span><span class="c-${t.me}">${MOVES[t.me].name.slice(0,2)}</span></div>`).join('')
+    :'<span class="empty">上があいて、下があなたの出した技。ここで流れを読む</span>';
+  $('#hist').scrollLeft=1e6;
+}
+function renderAll(){
+  $('#fMe').innerHTML=boxerSVG('var(--blue)','#2F63D3','#18264A');
+  $('#fCpu').innerHTML=boxerSVG('var(--red)','#D2433A','#5A1A14');
+  $('#fMe').className='fighter'+(B.me.hp<=0?' down':'');$('#fCpu').className='fighter'+(B.cpu.hp<=0?' down':'');
+  $('#cpuWho').textContent='性格：'+(B.hidden&&!B.over?'？？？':PERS[B.pers].name);
+  $('#meAb').textContent=ABIL[B.me.ability];
+  $('#streak').textContent=`${REC.streak}連勝`;
+  renderHp();renderMoves();renderHist();
+}
+function setMsg(t){$('#msg').textContent=t}
+function popDmg(m,t){const f=fighter(m),r=$('#ring').getBoundingClientRect(),b=f.getBoundingClientRect();
+  const p=document.createElement('div');p.className='pop';p.textContent='-'+t;p.style.left=(b.left-r.left+b.width*.35)+'px';p.style.top=(b.top-r.top)+'px';
+  $('#ring').appendChild(p);setTimeout(()=>p.remove(),1000)}
+
+/* ================= sheets ================= */
+function sheet(html,closable=true){
+  $('#layer').innerHTML=`<div class="scrim" id="scrim"><div class="sheet">${html}${closable?'<button class="ghost-btn" data-act="close" type="button">閉じる</button>':''}</div></div>`;
+  $('#scrim').onclick=e=>{
+    if(e.target.id==='scrim'&&closable)return closeSheet();
+    const b=e.target.closest('[data-act]');if(!b)return;
+    const a=b.dataset.act;
+    if(a==='close')closeSheet();
+    if(a==='next'){closeSheet();newMatch();}
+    if(a==='apply'){closeSheet();newMatch();}
+  };
+}
+function closeSheet(){$('#layer').innerHTML=''}
+function helpSheet(){
+  const a=B.me,d=B.cpu;
+  const row=k=>{const[r1,r2]=range(a,d,MOVES[k]);return `<tr><th>${MOVES[k].name}</th><td>${r1}〜${r2}</td><td>${Math.round(r1/d.max*100)}〜${Math.round(r2/d.max*100)}%</td></tr>`};
+  sheet(`<h2>相性とダメージ</h2>
+  <p>3つの技は優先度のおかげで三すくみになっています。</p>
+  <div class="tbl"><table>
+    <tr><th>あなた＼あいて</th><th>きあいパンチ</th><th>マッハパンチ</th><th>はやてがえし</th></tr>
+    <tr><th>きあいパンチ</th><td class="e">速い方だけ当たる</td><td class="l">先に殴られて失敗</td><td class="w">相手は失敗、こちらが当たる</td></tr>
+    <tr><th>マッハパンチ</th><td class="w">先に当てて集中を切る</td><td class="e">お互い当たる</td><td class="l">先に殴られてひるむ</td></tr>
+    <tr><th>はやてがえし</th><td class="l">失敗して殴られる</td><td class="w">先に当ててひるませる</td><td class="e">速い方が成功、遅い方はひるむ</td></tr>
+  </table></div>
+  <h3>ダメージの目安（乱数85〜100%、急所なし）</h3>
+  <div class="tbl"><table><tr><th>技</th><th>ダメージ</th><th>割合</th></tr>${ORDER.map(row).join('')}</table></div>
+  <p class="note">お互い いじっぱり H252 A252 S4（HP${a.max}・攻撃${a.atk}・防御${a.def}・素早さ${a.spe}）のレベル50。はやてがえしは、相手が優先度+1〜+3の技を選んでいて、まだ動いていないときだけ成功します。</p>`);
+}
+function logSheet(){
+  const h=B.log.map(l=>typeof l==='object'?`<div class="turn">ターン${l.turn}</div>`:`<div>${l}</div>`).join('');
+  sheet(`<h2>ログ</h2><div class="loglist">${h||'<div class="note">まだ何も起きていません</div>'}</div>`);
+}
+function setSheet(){
+  const seg=(key,opts)=>`<div class="seg" data-key="${key}">${opts.map(([v,l])=>`<button type="button" data-v="${v}" aria-pressed="${String(S[key])===String(v)}">${l}</button>`).join('')}</div>`;
+  sheet(`<h2>設定</h2>
+  <div class="opt"><label>特性（お互い同じ）</label>${seg('ability',[['iron','てつのこぶし'],['inner','せいしんりょく'],['keen','するどいめ']])}
+    <p class="note">てつのこぶし：きあいパンチ・マッハパンチの威力1.2倍（はやてがえしはパンチ技でない扱い）。せいしんりょく：はやてがえしでひるまない。</p></div>
+  <div class="opt"><label>素早さ</label>${seg('speed',[['tie','同速'],['faster','自分が速い'],['slower','自分が遅い']])}</div>
+  <div class="opt"><label>あいての性格</label>${seg('cpu',[['auto','おまかせ'],['random','きまぐれ'],['focus','一撃狙い'],['reader','読み'],['deep','裏の裏']])}
+    <p class="note">おまかせだと、試合が終わるまで性格は隠れています。</p></div>
+  <div class="opt"><label>急所</label>${seg('crit',[['true','あり'],['false','なし']])}</div>
+  <div class="opt"><label>ダメージ乱数</label>${seg('roll',[['true','あり'],['false','なし（最大値）']])}</div>
+  <div class="opt"><label>メッセージの速さ</label>${seg('fast',[['false','ふつう'],['true','はやい']])}</div>
+  <button class="big-btn" data-act="apply" type="button">この設定で新しく始める</button>`);
+  $('.sheet').addEventListener('click',e=>{const b=e.target.closest('.seg button');if(!b)return;
+    const key=b.parentElement.dataset.key;let v=b.dataset.v;if(v==='true')v=true;else if(v==='false')v=false;S[key]=v;store.set('settings',S);
+    for(const x of b.parentElement.children)x.setAttribute('aria-pressed',String(x===b));});
+}
+
+/* ================= events ================= */
+$('#moves').addEventListener('click',e=>{const b=e.target.closest('[data-mv]');if(b&&!b.disabled)playTurn(b.dataset.mv)});
+$('#bHelp').onclick=helpSheet;$('#bLog').onclick=logSheet;$('#bSet').onclick=setSheet;
+$('#bNew').onclick=()=>{if(busy)return;if(!B.over&&B.turn>0){REC.streak=0;store.set('rec',REC)}newMatch()};
+document.addEventListener('keydown',e=>{if($('#layer').innerHTML)return;const k={'1':'focus','2':'mach','3':'upper'}[e.key];if(k)playTurn(k)});
+newMatch();
+Save.touch({game:'punch'});
+});
+</script>
+<script>regSW('../sw.js')</script>
+</body>
+</html>

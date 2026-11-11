@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>糸通し｜すきま脳トレ箱</title>
+<meta name="theme-color" content="#EBF0F6">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icons/icon-192.png">
+<link rel="apple-touch-icon" href="../icons/icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap">
+<link rel="stylesheet" href="../common/base.css">
+<style>
+/* runner */
+.rn-wrap{width:100%;aspect-ratio:5/6;max-height:100%;position:relative;border:2px solid var(--ink);border-radius:12px;overflow:hidden;background:var(--skyBot)}
+.rn-wrap canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none}
+.rn-over{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;background:rgba(10,16,32,.35);color:#fff;pointer-events:none}
+.rn-over h3{margin:0;font:400 26px var(--display);text-shadow:0 2px 0 rgba(0,0,0,.35)}
+.rn-over p{margin:0;font-weight:700;text-shadow:0 1px 0 rgba(0,0,0,.4)}
+.rn-over .big{font:400 40px var(--display);font-variant-numeric:tabular-nums}
+.it-wrap{width:100%;height:100%;position:relative;border:2px solid var(--ink);border-radius:12px;overflow:hidden;background:var(--card)}
+.it-wrap canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none}
+.rn-help{font-size:12px;color:var(--ink2);text-align:center;margin:0}
+</style>
+</head>
+<body>
+<div id="app">
+  <section class="view" id="v-ito">
+    <header class="bar"><a class="back" href="../index.html">‹ 戻る</a><h2>糸通し</h2><span class="timer" id="it-best">ベスト 0本</span></header>
+    <div class="stage" style="padding-bottom:10px"><div class="it-wrap" id="it-wrap"><canvas id="it-cv"></canvas></div></div>
+    <p class="rn-help">押すと上がり、離すと下がる（スペースキーでも可）</p>
+    <div style="height:14px"></div>
+  </section>
+</div>
+<div id="layer"></div>
+<script src="../common/save.js"></script>
+<script src="../common/ui.js"></script>
+<script src="../common/sfx.js"></script>
+<script>
+Save.ready.then(()=>{
+const store=makeStore('');const current='ito';
+/* ---------- 糸通し ---------- */
+const IT={cv:$('#it-cv'),W:0,H:0,C:{},raf:0,last:0,state:'ready',best:store.get('itBest',0)};
+IT.ctx=IT.cv.getContext('2d');
+function itColors(){const m={paper:'--paper',card:'--card',ink:'--ink',ink2:'--ink2',grid:'--grid',thread:'--pen',ok:'--ok',steel:'--steel',steelHi:'--steelHi'};for(const k in m)IT.C[k]=css(m[k])}
+function itSize(){const r=$('#it-wrap').getBoundingClientRect();if(!r.width)return;const d=window.devicePixelRatio||1;
+  const changed=Math.abs(r.width-IT.W)>1||Math.abs(r.height-IT.H)>1;IT.W=r.width;IT.H=r.height;IT.cv.width=Math.round(IT.W*d);IT.cv.height=Math.round(IT.H*d);IT.ctx.setTransform(d,0,0,d,0,0);
+  itColors();if(changed&&IT.state!=='play'&&IT.state!=='paused')itReset();itDraw()}
+const itHx=()=>IT.W*.28;
+function itReset(){
+  Object.assign(IT,{state:'ready',hold:false,cam:0,y:IT.H/2,vy:0,trail:[],needles:[],nextX:IT.W*.28+340,count:0,combo:0,flash:null});
+  while(IT.nextX<IT.W+600)itSpawn();
+}
+function itSpawn(){
+  const H=IT.H,n=IT.needles.length,eh=Math.max(24,Math.min(H*.2,96)-n*2.6),margin=eh/2+H*.1;
+  const prev=IT.needles[n-1],py=prev?prev.base:H/2,swing=Math.min(H*.45,H*.18+n*H*.012);
+  const base=Math.max(margin,Math.min(H-margin,py+rnd(-swing,swing)));
+  const amp=n<8?0:Math.min(H*.16,(n-7)*H*.012),sp=n<8?0:.9+(n-8)*.05;
+  IT.needles.push({x:IT.nextX,base,eh,amp,sp,ph:rnd(0,6),eyeY:base,done:false,minD:0});
+  IT.nextX+=Math.max(165,300-n*5.5);
+}
+function itUpdate(dt){
+  if(IT.flash){IT.flash.t-=dt;if(IT.flash.t<=0)IT.flash=null}
+  if(IT.state!=='play')return;
+  const H=IT.H;IT.cam+=Math.min(320,150+IT.count*5)*dt;
+  IT.vy+=(IT.hold?-1050:900)*dt;IT.vy=clamp(IT.vy,-320,320);IT.y+=IT.vy*dt;
+  const wx=IT.cam+itHx();
+  IT.trail.push([wx,IT.y]);while(IT.trail.length&&IT.trail[0][0]<IT.cam-20)IT.trail.shift();
+  while(IT.nextX<IT.cam+IT.W+600)itSpawn();
+  for(const nd of IT.needles)if(nd.amp){nd.ph+=dt*nd.sp;nd.eyeY=clamp(nd.base+Math.sin(nd.ph)*nd.amp,nd.eh/2+4,H-nd.eh/2-4)}
+  if(IT.y<2||IT.y>H-2)return itDie('はみ出した！');
+  for(const nd of IT.needles){
+    if(nd.done)continue;
+    if(wx>=nd.x-6&&wx<=nd.x+6){const d=Math.abs(IT.y-nd.eyeY);if(d>nd.eh/2-3)return itDie('針に当たった！');nd.minD=Math.max(nd.minD,d)}
+    if(wx>nd.x+6){nd.done=true;IT.count++;Sfx.play('coin');
+      if(nd.minD<=Math.max(3,nd.eh*.14)){IT.combo++;IT.flash={t:.7,txt:IT.combo>1?`ど真ん中！ ×${IT.combo}`:'ど真ん中！'}}else IT.combo=0}
+  }
+  while(IT.needles.length&&IT.needles[0].x<IT.cam-60)IT.needles.shift();
+}
+function itDie(why){Sfx.play('hit');IT.state='over';IT.why=why;IT.overAt=performance.now();IT.newBest=IT.count>IT.best;if(IT.newBest){IT.best=IT.count;store.set('itBest',IT.count)}itBestTxt()}
+function itBestTxt(){$('#it-best').textContent=`ベスト ${IT.best}本`}
+function itText(t,y,size,color,disp){const x=IT.ctx;x.fillStyle=color;x.font=disp?`400 ${size}px "Dela Gothic One",sans-serif`:`900 ${size}px "Zen Kaku Gothic New",sans-serif`;x.textAlign='center';x.textBaseline='middle';x.fillText(t,IT.W/2,y)}
+function itPanel(lines){const x=IT.ctx;x.globalAlpha=.9;x.fillStyle=IT.C.card;x.fillRect(0,IT.H/2-70,IT.W,140);x.globalAlpha=1;lines.forEach(([t,dy,s,c,d])=>itText(t,IT.H/2+dy,s,c,d))}
+function itDraw(){
+  const x=IT.ctx,C=IT.C,W=IT.W,H=IT.H;if(!W)return;
+  x.fillStyle=C.card;x.fillRect(0,0,W,H);
+  for(let gx=-((IT.cam||0)%44);gx<W;gx+=44){x.fillStyle=C.grid;x.fillRect(gx,0,1,H)}
+  for(const nd of IT.needles){
+    const nx=nd.x-IT.cam;if(nx<-20||nx>W+20)continue;
+    const g=x.createLinearGradient(nx-6,0,nx+6,0);g.addColorStop(0,C.steel);g.addColorStop(.45,C.steelHi);g.addColorStop(1,C.steel);
+    x.fillStyle=g;x.beginPath();x.moveTo(nx-6,-10);x.lineTo(nx+6,-10);x.lineTo(nx+6,H-24);x.lineTo(nx,H+10);x.lineTo(nx-6,H-24);x.closePath();x.fill();
+    x.fillStyle=nd.done?C.grid:C.card;x.beginPath();x.roundRect(nx-3,nd.eyeY-nd.eh/2,6,nd.eh,3);x.fill();x.strokeStyle=C.ink;x.lineWidth=1.5;x.stroke();
+  }
+  if(IT.trail.length>1){x.beginPath();IT.trail.forEach(([tx,ty],i)=>{const sx=tx-IT.cam;i?x.lineTo(sx,ty):x.moveTo(sx,ty)});
+    x.strokeStyle=C.thread;x.lineWidth=3;x.lineCap='round';x.lineJoin='round';x.stroke()}
+  x.fillStyle=C.thread;x.beginPath();x.arc(itHx(),IT.y,4.5,0,7);x.fill();
+  if(IT.state!=='ready'){x.fillStyle=C.ink;x.font='400 22px "Dela Gothic One",sans-serif';x.textAlign='left';x.textBaseline='top';x.fillText(IT.count+'本',12,10)}
+  if(IT.flash){x.globalAlpha=Math.min(1,IT.flash.t*2);itText(IT.flash.txt,H*.14,22,C.ok,1);x.globalAlpha=1}
+  if(IT.state==='ready')itPanel([['糸通し',-30,26,C.ink,1],['押して上がる・離して下がる。針の穴を通そう',8,13.5,C.ink2],['タップでスタート',38,15,C.thread]]);
+  if(IT.state==='paused')itPanel([['一時停止中',-12,24,C.ink,1],['タップで再開',24,15,C.thread]]);
+  if(IT.state==='over')itPanel([[IT.why,-34,22,C.thread,1],[IT.count+'本',4,28,C.ink,1],[(IT.newBest?'ベスト更新！　':'')+'タップでもう一回',40,14,C.ink2]]);
+}
+function itFrame(t){if(current!=='ito'){IT.raf=0;return}const dt=Math.min(.033,(t-IT.last)/1000||0);IT.last=t;itUpdate(dt);itDraw();IT.raf=requestAnimationFrame(itFrame)}
+function itDown(){
+  if(IT.state==='ready'||IT.state==='paused'){IT.state='play';IT.hold=true;return}
+  if(IT.state==='over'){if(performance.now()-IT.overAt<500)return;itReset();IT.state='play';IT.hold=true;return}
+  IT.hold=true}
+(function(){
+  IT.cv.addEventListener('pointerdown',e=>{e.preventDefault();IT.cv.setPointerCapture?.(e.pointerId);itDown()});
+  for(const ev of ['pointerup','pointercancel','lostpointercapture'])IT.cv.addEventListener(ev,()=>{IT.hold=false});
+  document.addEventListener('keydown',e=>{if(current!=='ito')return;if((e.code==='Space'||e.key==='ArrowUp')&&!e.repeat){e.preventDefault();itDown()}});
+  document.addEventListener('keyup',e=>{if(current==='ito'&&(e.code==='Space'||e.key==='ArrowUp'))IT.hold=false});
+  new ResizeObserver(()=>{if(current==='ito')itSize()}).observe($('#it-wrap'));
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(IT.W)itColors()});
+})();
+function itEnter(){itBestTxt();requestAnimationFrame(()=>{itSize();if(!IT.needles||!IT.needles.length)itReset();itDraw();if(!IT.raf){IT.last=performance.now();IT.raf=requestAnimationFrame(itFrame)}})}
+function itLeave(){IT.hold=false;if(IT.state==='play')IT.state='paused'}
+
+
+document.addEventListener('visibilitychange',()=>{if(document.hidden)itLeave()});
+window.addEventListener('pagehide',()=>itLeave());
+itEnter();
+});
+</script>
+<script>regSW('../sw.js')</script>
+</body>
+</html>

@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>スリザーリンク｜すきま脳トレ箱</title>
+<meta name="theme-color" content="#EBF0F6">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icons/icon-192.png">
+<link rel="apple-touch-icon" href="../icons/icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap">
+<link rel="stylesheet" href="../common/base.css">
+<style>
+/* slitherlink */
+.sl-wrap{width:min(100%,calc(100vh - 300px));width:min(100%,calc(100dvh - 300px));min-width:250px;max-width:100%;aspect-ratio:1;
+  background:var(--card);border:1.5px solid var(--ink);border-radius:10px;position:relative}
+.sl-wrap canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none}
+.sl-busy{position:absolute;inset:0;display:grid;place-items:center;font-weight:700;color:var(--ink2);background:var(--card);border-radius:10px}
+</style>
+</head>
+<body>
+<div id="app">
+  <section class="view" id="v-slither">
+    <header class="bar"><a class="back" href="../index.html">‹ 戻る</a><h2>スリザーリンク</h2><button class="btn" id="sl-list" type="button">一覧</button><span class="timer" id="sl-time">00:00</span></header>
+    <div class="opts">
+      <div class="seg" id="sl-size" role="group" aria-label="大きさ">
+        <button type="button" data-v="5">5×5</button><button type="button" data-v="6">6×6</button><button type="button" data-v="7">7×7</button>
+      </div>
+      <button class="btn primary" id="sl-new" type="button">新しい問題</button>
+    </div>
+    <div class="stage"><div class="sl-wrap" id="sl-wrap"><canvas id="sl-cv"></canvas><div class="sl-busy" id="sl-busy" hidden>問題を作っています…</div></div></div>
+    <p class="msg" id="sl-msg"></p>
+    <div class="under">
+      <div class="tools">
+        <button class="btn" id="sl-mline" type="button" aria-pressed="true">線を引く</button>
+        <button class="btn" id="sl-mx" type="button" aria-pressed="false">×をつける</button>
+        <button class="btn" id="sl-undo" type="button">戻す</button>
+        <button class="btn" id="sl-reset" type="button">全部消す</button>
+      </div>
+    </div>
+  </section>
+
+</div>
+<div id="layer"></div>
+<script src="../common/save.js"></script>
+<script src="../common/ui.js"></script>
+<script src="../common/sfx.js"></script>
+<script>
+/* ===================== SLITHERLINK logic ===================== */
+function slGeom(n){
+  const HN=(n+1)*n,E=HN+n*(n+1),NV=(n+1)*(n+1);
+  const H=(r,c)=>r*n+c,V=(r,c)=>HN+r*(n+1)+c,VX=(r,c)=>r*(n+1)+c;
+  const cellE=[],vertE=[],edgeV=[],edgeC=[];
+  for(let r=0;r<n;r++)for(let c=0;c<n;c++)cellE.push([H(r,c),H(r+1,c),V(r,c),V(r,c+1)]);
+  for(let r=0;r<=n;r++)for(let c=0;c<=n;c++){const l=[];
+    if(r>0)l.push(V(r-1,c));if(r<n)l.push(V(r,c));if(c>0)l.push(H(r,c-1));if(c<n)l.push(H(r,c));vertE.push(l)}
+  for(let r=0;r<=n;r++)for(let c=0;c<n;c++){edgeV[H(r,c)]=[VX(r,c),VX(r,c+1)];edgeC[H(r,c)]=[r>0?(r-1)*n+c:-1,r<n?r*n+c:-1]}
+  for(let r=0;r<n;r++)for(let c=0;c<=n;c++){edgeV[V(r,c)]=[VX(r,c),VX(r+1,c)];edgeC[V(r,c)]=[c>0?r*n+c-1:-1,c<n?r*n+c:-1]}
+  return {n,HN,E,NV,cellE,vertE,edgeV,edgeC};
+}
+function slBoundary(G,inR){const on=new Int8Array(G.E);
+  for(let e=0;e<G.E;e++){const[a,b]=G.edgeC[e];on[e]=((a>=0&&inR[a])?1:0)!==((b>=0&&inR[b])?1:0)?1:0}return on}
+function slIsLoop(G,on){
+  let total=0,start=-1;
+  for(let e=0;e<G.E;e++)if(on[e]){total++;if(start<0)start=e}
+  if(!total)return false;
+  for(let v=0;v<G.NV;v++){let d=0;for(const e of G.vertE[v])if(on[e])d++;if(d!==0&&d!==2)return false}
+  let cnt=0,e=start,v=G.edgeV[start][0];
+  do{cnt++;const[a,b]=G.edgeV[e];const nv=a===v?b:a;let ne=-1;
+    for(const x of G.vertE[nv])if(on[x]&&x!==e){ne=x;break}
+    v=nv;e=ne}while(e!==start&&e>=0&&cnt<=total);
+  return cnt===total;
+}
+function slGenLoop(G){
+  const n=G.n,N=n*n;
+  for(let att=0;att<60;att++){
+    const inR=new Uint8Array(N);inR[ri(0,N-1)]=1;let size=1;
+    const target=Math.round(N*rnd(.4,.56));let fails=0;
+    while(size<target&&fails<300){
+      const fr=[];
+      for(let i=0;i<N;i++)if(!inR[i]){const r=(i/n)|0,c=i%n;
+        if((r>0&&inR[i-n])||(r<n-1&&inR[i+n])||(c>0&&inR[i-1])||(c<n-1&&inR[i+1]))fr.push(i)}
+      if(!fr.length)break;
+      const x=fr[ri(0,fr.length-1)];inR[x]=1;
+      if(slIsLoop(G,slBoundary(G,inR)))size++;else{inR[x]=0;fails++}
+    }
+    if(size>=target*.85)return slBoundary(G,inR);
+  }
+  return null;
+}
+// returns 0 contradiction, 1 undecided, 2 solved
+function slProp(G,clue,s){
+  const N=G.n*G.n;
+  for(;;){
+    let ch=false;
+    for(let c=0;c<N;c++){const k=clue[c];if(k<0)continue;let on=0,un=0;
+      for(const e of G.cellE[c]){if(s[e]===1)on++;else if(s[e]<0)un++}
+      if(on>k||on+un<k)return 0;
+      if(un){if(on===k){for(const e of G.cellE[c])if(s[e]<0)s[e]=0;ch=true}
+        else if(on+un===k){for(const e of G.cellE[c])if(s[e]<0)s[e]=1;ch=true}}}
+    for(let v=0;v<G.NV;v++){let on=0,un=0,ue=-1;
+      for(const e of G.vertE[v]){if(s[e]===1)on++;else if(s[e]<0){un++;ue=e}}
+      if(on>2)return 0;
+      if(un){if(on===2){for(const e of G.vertE[v])if(s[e]<0)s[e]=0;ch=true}
+        else if(on===1){if(un===1){s[ue]=1;ch=true}}
+        else if(un===1){s[ue]=0;ch=true}}
+      else if(on===1)return 0}
+    if(ch)continue;
+    // loop structure
+    const par=new Int32Array(G.NV);for(let i=0;i<G.NV;i++)par[i]=i;
+    const find=x=>{while(par[x]!==x){par[x]=par[par[x]];x=par[x]}return x};
+    const deg=new Uint8Array(G.NV);let onCnt=0;
+    for(let e=0;e<G.E;e++)if(s[e]===1){onCnt++;const[a,b]=G.edgeV[e];deg[a]++;deg[b]++;par[find(a)]=find(b)}
+    if(!onCnt)return 1;
+    const roots=new Map();
+    for(let v=0;v<G.NV;v++)if(deg[v]){const r=find(v);if(!roots.has(r))roots.set(r,false);if(deg[v]===1)roots.set(r,true)}
+    let closed=false;for(const hasEnd of roots.values())if(!hasEnd)closed=true;
+    if(closed){
+      if(roots.size>1)return 0;
+      for(let e=0;e<G.E;e++)if(s[e]<0)s[e]=0;
+      for(let c=0;c<N;c++){if(clue[c]<0)continue;let on=0;for(const e of G.cellE[c])if(s[e]===1)on++;if(on!==clue[c])return 0}
+      return 2;
+    }
+    for(let e=0;e<G.E;e++){if(s[e]>=0)continue;const[a,b]=G.edgeV[e];
+      if(deg[a]===1&&deg[b]===1&&find(a)===find(b)){
+        let ok=roots.size===1;
+        if(ok)for(let c=0;c<N&&ok;c++){if(clue[c]<0)continue;let on=0;for(const x of G.cellE[c])if(s[x]===1||x===e)on++;if(on!==clue[c])ok=false}
+        if(!ok){s[e]=0;ch=true}}}
+    if(!ch)return 1;
+  }
+}
+function slPick(G,clue,s){
+  for(let v=0;v<G.NV;v++){let on=0,ue=-1;for(const e of G.vertE[v]){if(s[e]===1)on++;else if(s[e]<0)ue=e}if(on===1&&ue>=0)return ue}
+  for(const want of[3,2,1])for(let c=0;c<G.n*G.n;c++)if(clue[c]===want)for(const e of G.cellE[c])if(s[e]<0)return e;
+  for(let e=0;e<G.E;e++)if(s[e]<0)return e;
+  return -1;
+}
+function slCount(G,clue,limit,budget){
+  let count=0,nodes=0,aborted=false;
+  (function rec(s){
+    if(++nodes>budget){aborted=true;return}
+    const r=slProp(G,clue,s);if(r===0)return;if(r===2){count++;return}
+    const e=slPick(G,clue,s);if(e<0)return;
+    for(const val of[1,0]){const t=s.slice();t[e]=val;rec(t);if(count>=limit||aborted)return}
+  })(new Int8Array(G.E).fill(-1));
+  if(count>=limit)return count;
+  return aborted?-1:count;
+}
+function slGenerate(n){
+  const G=slGeom(n);const N=n*n;
+  const keep={5:.5,6:.42,7:.36}[n]||.4;
+  for(let tries=0;tries<30;tries++){
+    const sol=slGenLoop(G);if(!sol)continue;
+    const full=G.cellE.map(es=>es.reduce((a,e)=>a+sol[e],0));
+    if(slCount(G,full,2,20000)!==1)continue;
+    const clue=full.slice();let kept=N;const minKeep=Math.ceil(N*keep);const t0=Date.now();
+    for(const c of shuffle([...Array(N).keys()])){
+      if(kept<=minKeep||Date.now()-t0>2500)break;
+      const k=clue[c];clue[c]=-1;
+      if(slCount(G,clue,2,2500)===1)kept--;else clue[c]=k;
+    }
+    return {n,clue,sol:Array.from(sol)};
+  }
+  return null;
+}
+
+/* ---------- スリザーリンク 画面（複数問題の途中保存に対応） ---------- */
+Save.ready.then(()=>{
+const store=makeStore('');
+const SL={id:null,created:0,st:null,G:null,mode:1,pick:store.get('slSize','6'),cv:$('#sl-cv'),clock:makeClock($('#sl-time'))};
+(function(){
+  segInit($('#sl-size'),SL.pick,v=>{SL.pick=v;store.set('slSize',v)});
+  $('#sl-new').addEventListener('click',()=>{slLeave();slNew(+SL.pick);toast('前の問題は「一覧」に残っています')});
+  $('#sl-list').addEventListener('click',()=>{slSave();openSaveList({game:'slither',currentId:SL.id,
+    onOpen:rec=>{slLeave();slOpen(rec)},onRestart:rec=>{slLeave();slRestart(rec)},onNew:()=>{slLeave();slNew(+SL.pick)},newLabel:`新しい問題（${SL.pick}×${SL.pick}）`,
+    onDeleteCurrent:()=>{SL.id=null;SL.st=null;slStart()}})});
+  const setMode=m=>{SL.mode=m;$('#sl-mline').setAttribute('aria-pressed',String(m===1));$('#sl-mx').setAttribute('aria-pressed',String(m===2))};
+  $('#sl-mline').addEventListener('click',()=>setMode(1));$('#sl-mx').addEventListener('click',()=>setMode(2));
+  $('#sl-undo').addEventListener('click',()=>{const s=SL.st;if(!s||s.done||!s.hist.length)return;s.lines=s.hist.pop();slSave();slDraw()});
+  $('#sl-reset').addEventListener('click',()=>{const s=SL.st;if(!s||s.done||!s.lines.some(x=>x))return;s.hist.push(s.lines.slice());s.lines.fill(0);slSave();slDraw()});
+  SL.cv.addEventListener('pointerdown',e=>{const s=SL.st;if(!s||s.done)return;e.preventDefault();
+    const rc=SL.cv.getBoundingClientRect(),x=e.clientX-rc.left,y=e.clientY-rc.top;
+    const n=s.n,cs=rc.width/(n+1),m=cs/2,G=SL.G;
+    let best=-1,bd=1e9;
+    for(let ed=0;ed<G.E;ed++){const[a,b]=G.edgeV[ed];
+      const ax=m+(a%(n+1))*cs,ay=m+((a/(n+1))|0)*cs,bx=m+(b%(n+1))*cs,by=m+((b/(n+1))|0)*cs;
+      const d=Math.hypot(x-(ax+bx)/2,y-(ay+by)/2);if(d<bd){bd=d;best=ed}}
+    if(best<0||bd>cs*.5)return;
+    s.hist.push(s.lines.slice());if(s.hist.length>300)s.hist.shift();
+    const cur=s.lines[best];s.lines[best]=cur===SL.mode?0:SL.mode;Sfx.play('tap');
+    slCheck();slSave();slDraw()});
+  new ResizeObserver(()=>slDraw()).observe($('#sl-wrap'));
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>slDraw());
+})();
+function slNew(n){$('#sl-busy').hidden=false;SL.clock.stop();
+  setTimeout(()=>{const p=slGenerate(n);$('#sl-busy').hidden=true;if(!p){$('#sl-msg').textContent='問題を作れませんでした。もう一度押してください';return}
+    SL.id=Save.newId('slither');SL.created=Date.now();
+    SL.st={n,clue:p.clue,sol:p.sol,lines:new Array(p.sol.length).fill(0),hist:[],done:false,time:0};SL.G=slGeom(n);
+    SL.clock.set(0);SL.clock.run();slSave();slDraw()},40)}
+function slOpen(rec){SL.id=rec.id;SL.created=rec.created;SL.st=rec.data;SL.st.hist=SL.st.hist||[];SL.G=slGeom(SL.st.n);SL.clock.stop();SL.clock.set(SL.st.time||0);if(!SL.st.done)SL.clock.run();slDraw()}
+function slRestart(rec){SL.id=rec.id;SL.created=rec.created;const d=rec.data;SL.st={...d,lines:new Array(d.sol.length).fill(0),hist:[],done:false,time:0,newBest:false};SL.G=slGeom(d.n);
+  SL.clock.stop();SL.clock.set(0);SL.clock.run();slSave();slDraw()}
+function slSave(){if(!SL.st||!SL.id)return;SL.st.time=SL.clock.get();const m=Save.describe('slither',SL.st);
+  Save.putPuzzle({id:SL.id,game:'slither',...m,time:SL.st.time,status:SL.st.done?'clear':'play',created:SL.created,data:SL.st});
+  Save.touch({game:'slither',id:SL.id,title:m.title})}
+function slCheck(){const s=SL.st;
+  for(let e=0;e<s.sol.length;e++)if((s.lines[e]===1)!==(s.sol[e]===1))return;
+  s.done=true;SL.clock.stop();s.time=SL.clock.get();const t=Math.floor(s.time);const best=store.get('slBest',{});
+  s.newBest=best[s.n]==null||t<best[s.n];if(s.newBest){best[s.n]=t;store.set('slBest',best)}Sfx.play('clear')}
+function slDraw(){const s=SL.st,cv=SL.cv;if(!s)return;
+  const G=SL.G,n=s.n,w=cv.clientWidth,h=cv.clientHeight;if(!w)return;const dpr=window.devicePixelRatio||1;
+  cv.width=w*dpr;cv.height=h*dpr;const x=cv.getContext('2d');x.setTransform(dpr,0,0,dpr,0,0);x.clearRect(0,0,w,h);
+  const cs=w/(n+1),m=cs/2,ink=css('--ink'),ink2=css('--ink2'),pen=css('--pen'),ok=css('--ok'),line=css('--line');
+  const P=v=>[m+(v%(n+1))*cs,m+((v/(n+1))|0)*cs];
+  x.textAlign='center';x.textBaseline='middle';x.font=`900 ${Math.round(cs*.5)}px "Zen Kaku Gothic New",sans-serif`;
+  for(let c=0;c<n*n;c++){const k=s.clue[c];if(k<0)continue;let on=0;for(const e of G.cellE[c])if(s.lines[e]===1)on++;
+    x.fillStyle=on>k?pen:on===k?line:ink;if(s.done)x.fillStyle=ink2;
+    x.fillText(k,m+(c%n+.5)*cs,m+(((c/n)|0)+.5)*cs+1)}
+  x.lineCap='round';
+  for(let e=0;e<G.E;e++){const v=s.lines[e];if(!v)continue;const[a,b]=G.edgeV[e];const[ax,ay]=P(a),[bx,by]=P(b);
+    if(v===1){x.strokeStyle=s.done?ok:ink;x.lineWidth=Math.max(3,cs*.11);x.beginPath();x.moveTo(ax,ay);x.lineTo(bx,by);x.stroke()}
+    else{const mx=(ax+bx)/2,my=(ay+by)/2,r=cs*.1;x.strokeStyle=pen;x.lineWidth=2;x.beginPath();x.moveTo(mx-r,my-r);x.lineTo(mx+r,my+r);x.moveTo(mx+r,my-r);x.lineTo(mx-r,my+r);x.stroke()}}
+  x.fillStyle=ink;for(let v=0;v<G.NV;v++){const[px,py]=P(v);x.beginPath();x.arc(px,py,Math.max(2.2,cs*.05),0,7);x.fill()}
+  const msg=$('#sl-msg');
+  if(s.done){msg.className='msg win';msg.textContent=`クリア！ ${fmt(s.time)}`+(s.newBest?'　ベスト更新':'')}
+  else{msg.className='msg';msg.textContent=`${n}×${n}・線は1本の輪に。交差・枝分かれなし`}}
+async function slStart(){
+  const id=getParam('id');
+  if(id){const r=await Save.getPuzzle(id);if(r&&r.game==='slither'){slOpen(r);return}}
+  const list=await Save.listPuzzles('slither');const r=list&&list.find(x=>x.status!=='clear');
+  if(r)slOpen(r);else slNew(+SL.pick);
+}
+function slLeave(){SL.clock.stop();slSave()}
+document.addEventListener('visibilitychange',()=>{if(document.hidden)slLeave();else if(SL.st&&!SL.st.done)SL.clock.run()});
+window.addEventListener('pagehide',slLeave);
+slStart();
+});
+
+</script>
+<script>regSW('../sw.js')</script>
+</body>
+</html>
