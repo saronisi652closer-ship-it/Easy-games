@@ -50,7 +50,7 @@ const B={
 const be=()=>B[backend];
 
 /* ---------- 進捗などの表示用情報 ---------- */
-const DIFF={easy:'かんたん',normal:'ふつう',hard:'むずかしい'},LV={easy:'よわい',normal:'ふつう',hard:'つよい'};
+const DIFF={easy:'かんたん',normal:'ふつう',hard:'むずかしい',oni:'鬼'},LV={easy:'よわい',normal:'ふつう',hard:'つよい'};
 function describe(game,d){
   try{
     if(game==='sudoku'){let need=0,ok=0;for(let i=0;i<81;i++)if(!d.puzzle[i]){need++;if(d.cur[i]&&d.cur[i]===d.sol[i])ok++}

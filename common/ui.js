@@ -6,7 +6,7 @@ const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a}
 const fmt=s=>{s=Math.floor(s||0);const h=Math.floor(s/3600),m=Math.floor(s/60)%60,ss=String(s%60).padStart(2,'0');return h?`${h}:${String(m).padStart(2,'0')}:${ss}`:`${String(m).padStart(2,'0')}:${ss}`};
 function css(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim()}
-const DIFF_JA={easy:'かんたん',normal:'ふつう',hard:'むずかしい'};
+const DIFF_JA={easy:'かんたん',normal:'ふつう',hard:'むずかしい',oni:'鬼'};
 const LV_JA={easy:'よわい',normal:'ふつう',hard:'つよい'};
 /* 旧版の store と同じ形で使える保存（中身は Save） */
 function makeStore(prefix){return {get(k,d){const v=Save.get(prefix+k);return v===undefined||v===null?d:v},set(k,v){Save.set(prefix+k,v)}}}
