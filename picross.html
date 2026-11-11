@@ -1,0 +1,414 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ピクロス｜すきま脳トレ箱</title>
+<meta name="theme-color" content="#EBF0F6">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap">
+<style>
+:root{
+  --paper:#EBF0F6; --grid:#D9E1EC; --card:#FFFFFF; --ink:#18264A; --ink2:#5B6886; --line:#C2CDDD;
+  --mark:#F7C843; --markInk:#18264A; --pen:#D2433A; --penBg:#FBE3E0; --pencil:#2F63D3; --ok:#2B8A57; --okBg:#DDF1E4;
+  --peer:#E3E9F3; --cellX:#9AA6B8;
+  --display:"Dela Gothic One","Hiragino Sans","Noto Sans JP",sans-serif;
+  --body:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#111827; --grid:#1A2335; --card:#1B2438; --ink:#E4E9F3; --ink2:#97A3BD; --line:#33405A;
+  --mark:#F2C23A; --markInk:#18264A; --pen:#FF6B5F; --penBg:#3F2023; --pencil:#7FA6FF; --ok:#4FC283; --okBg:#173326;
+  --peer:#232E46; --cellX:#6E7A92;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#111827; --grid:#1A2335; --card:#1B2438; --ink:#E4E9F3; --ink2:#97A3BD; --line:#33405A;
+  --mark:#F2C23A; --markInk:#18264A; --pen:#FF6B5F; --penBg:#3F2023; --pencil:#7FA6FF; --ok:#4FC283; --okBg:#173326;
+  --peer:#232E46; --cellX:#6E7A92;
+  color-scheme:dark}
+*,*::before,*::after{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--body);font-size:14px;overflow:hidden;-webkit-tap-highlight-color:transparent;
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:22px 22px}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+[hidden]{display:none!important}
+button{font-family:var(--body);color:inherit;cursor:pointer;touch-action:manipulation}
+button:focus-visible,a:focus-visible{outline:3px solid var(--mark);outline-offset:2px}
+#app{height:100%;max-width:560px;margin:0 auto;display:flex;flex-direction:column;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.bar{display:flex;align-items:center;gap:10px;padding-block:12px 8px}
+.back{font:700 13px var(--body);color:var(--ink);text-decoration:none;padding:7px 12px;border:1.5px solid var(--ink);border-radius:999px;background:var(--card);white-space:nowrap}
+.bar h2{font:400 19px var(--display);margin:0;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.timer{font:700 14px var(--body);font-variant-numeric:tabular-nums;background:var(--mark);color:var(--markInk);padding:4px 10px;border-radius:6px;white-space:nowrap}
+.seg{display:flex;border:1.5px solid var(--ink);border-radius:10px;overflow:hidden;background:var(--card)}
+.seg button{flex:1;border:0;background:none;padding:8px 10px;font-weight:700;font-size:13px;color:var(--ink2);white-space:nowrap}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.btn{border:1.5px solid var(--ink);background:var(--card);color:var(--ink);border-radius:10px;padding:8px 12px;font-weight:700;font-size:13px}
+.btn.primary{background:var(--mark);color:var(--markInk)}
+.btn[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.btn:disabled{opacity:.4}
+.msg{text-align:center;min-height:1.5em;margin:8px 0;font-weight:700;font-size:14px}
+.msg.win{color:var(--ok)} .msg.warn{color:var(--pen)}
+.scrim{position:fixed;inset:0;background:rgba(10,16,32,.5);display:flex;align-items:flex-end;justify-content:center;z-index:20}
+.sheet{width:100%;max-width:560px;max-height:88%;overflow:auto;background:var(--paper);border-radius:16px 16px 0 0;border:2px solid var(--ink);border-bottom:0;
+  padding:18px max(16px,env(safe-area-inset-right,0px)) calc(18px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:12px}
+.sheet h3{font:400 22px var(--display);margin:0;text-align:center}
+.sheet p{margin:0;font-size:13.5px;line-height:1.65}
+.sheet .row{display:flex;gap:8px}
+.sheet .row .btn{flex:1;padding:12px;font-size:14px}
+.note{font-size:12px;color:var(--ink2);line-height:1.6}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+
+/* menu */
+#menu{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:16px;padding-bottom:24px}
+.sec h3{font:400 16px var(--display);margin:0 0 8px}
+.pics{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.pic{border:1.5px solid var(--ink);background:var(--card);border-radius:10px;padding:8px 4px 6px;display:flex;flex-direction:column;align-items:center;gap:4px;box-shadow:2px 2px 0 var(--ink)}
+.pic canvas{width:44px;height:44px;image-rendering:pixelated;border-radius:4px}
+.pic .q{width:44px;height:44px;display:grid;place-items:center;font:400 22px var(--display);color:var(--ink2);background:var(--peer);border-radius:4px}
+.pic span{font-size:11px;font-weight:700}
+.pic small{font-size:10px;color:var(--ink2)}
+.autos{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.auto{border:1.5px solid var(--ink);background:var(--card);border-radius:10px;padding:12px 4px;display:flex;flex-direction:column;align-items:center;gap:3px;box-shadow:2px 2px 0 var(--ink)}
+.auto b{font:400 18px var(--display)}
+.auto small{font-size:11px;color:var(--ink2);font-variant-numeric:tabular-nums}
+.resume{border:2px solid var(--ink);background:var(--mark);color:var(--markInk);border-radius:12px;padding:12px;font-weight:900;font-size:14px;text-align:left}
+.resume small{display:block;font-weight:500;font-size:12px}
+/* play */
+#play{flex:1;min-height:0;display:flex;flex-direction:column}
+.opts{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding-bottom:8px}
+.opts .seg{flex:0 0 auto}
+.stage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.board{display:grid;touch-action:none;user-select:none;-webkit-user-select:none}
+.cc{display:flex;flex-direction:column;justify-content:flex-end;align-items:center;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;line-height:1.15;padding-bottom:3px}
+.rc{display:flex;justify-content:flex-end;align-items:center;gap:.35em;font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums;padding-right:5px;white-space:nowrap}
+.cc.done,.rc.done{color:var(--cellX)}
+.cc.hl,.rc.hl{background:var(--peer)}
+.cell{background:var(--card);border-right:1px solid var(--line);border-bottom:1px solid var(--line);position:relative}
+.cell.f{background:var(--ink)}
+.cell.x::before,.cell.x::after{content:"";position:absolute;left:22%;right:22%;top:50%;height:1.5px;background:var(--cellX);transform:rotate(45deg)}
+.cell.x::after{transform:rotate(-45deg)}
+.cell.bad{background:var(--penBg)} .cell.bad::before,.cell.bad::after{background:var(--pen)}
+.cell.t5{border-right:2px solid var(--ink)} .cell.b5{border-bottom:2px solid var(--ink)}
+.cell.l0{border-left:2px solid var(--ink)} .cell.top0{border-top:2px solid var(--ink)}
+.tools{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding-bottom:16px}
+.tools .btn{padding:11px 4px;font-size:14px}
+.reveal{display:flex;justify-content:center}
+.reveal canvas{width:min(60vw,200px);height:auto;image-rendering:pixelated;border:2px solid var(--ink);border-radius:6px;background:var(--card)}
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="bar"><a class="back" id="back" href="./">‹ 戻る</a><h2 id="title">ピクロス</h2><span class="timer" id="time" hidden>00:00</span></header>
+
+  <section id="menu">
+    <button class="resume" id="resume" type="button" hidden></button>
+    <div class="sec"><h3>絵の問題</h3><div class="pics" id="pics"></div></div>
+    <div class="sec"><h3>自動生成</h3><div class="autos" id="autos"></div>
+      <p class="note" style="margin-top:8px">毎回新しい問題を作ります。どれも数字だけで答えが1つに決まります。</p></div>
+  </section>
+
+  <section id="play" hidden>
+    <div class="opts">
+      <div class="seg" id="tool" role="group" aria-label="道具"><button type="button" data-v="1" aria-pressed="true">■ 塗る</button><button type="button" data-v="2" aria-pressed="false">× 印</button></div>
+      <button class="btn" id="miss" type="button" aria-pressed="false">ミスを教える</button>
+    </div>
+    <div class="stage" id="stage"><div class="board" id="board"></div></div>
+    <p class="msg" id="msg"></p>
+    <div class="tools">
+      <button class="btn" id="undo" type="button">戻す</button>
+      <button class="btn" id="clear" type="button">全部消す</button>
+      <button class="btn" id="quit" type="button">問題を選ぶ</button>
+    </div>
+  </section>
+</div>
+<div id="layer"></div>
+<script>
+/* ===== Picross logic (shared by page and tests) ===== */
+const PX_PAL={r:'#D2433A',o:'#E07B39',y:'#F2C23A',g:'#4FA35A',G:'#2E6B3A',b:'#4F86C6',B:'#2F4F86',n:'#8A5A36',k:'#2B2B33',p:'#EE8FB3',e:'#E8D9B8',w:'#9AA6B8'};
+const PX_PICS=[
+ {id:'heart',name:'ハート',rows:[
+  '.r.r.',
+  'rrrrr',
+  'rrrrr',
+  '.rrr.',
+  '..r..']},
+ {id:'tree',name:'木',rows:[
+  '..g..',
+  '.ggg.',
+  'ggggg',
+  '..n..',
+  '.nnn.']},
+ {id:'mush',name:'きのこ',rows:[
+  '.rrr.',
+  'rryrr',
+  'yrrry',
+  '..e..',
+  '.ee..']},
+ {id:'cat',name:'ねこ',rows:[
+  'k........k',
+  'kk......kk',
+  'kkk....kkk',
+  'kkkkkkkkkk',
+  'kk.kkkk.kk',
+  'kk.kkkk.kk',
+  'kkkkkkkkkk',
+  'kkkkppkkkk',
+  '.kkk.kkkk.',
+  '..kkkkkk..']},
+ {id:'fish',name:'さかな',rows:[
+  '..........',
+  '....bb....',
+  '...bbbb..b',
+  '..bbbbbbbb',
+  '.bbkbbbbbb',
+  '.bbbbbbbbb',
+  '..bbbbbbbb',
+  '...bbbb..b',
+  '....bb....',
+  '..........']},
+ {id:'umbrella',name:'かさ',rows:[
+  '....r.....',
+  '..rrrrr...',
+  '.rrrrrrr..',
+  'rrrrrrrrr.',
+  'r.r.r.r.r.',
+  '....n.....',
+  '....n.....',
+  '....n.....',
+  '..n.n.....',
+  '...n......']},
+ {id:'star',name:'ほし',rows:[
+  '....yy....',
+  '....yy....',
+  '...yyyy...',
+  'yyyyyyyyyy',
+  '.yyyyyyyy.',
+  '..yyyyyy..',
+  '..yyyyyy..',
+  '.yyy..yyy.',
+  '.yy....yy.',
+  'yy......yy']},
+ {id:'cup',name:'コーヒー',rows:[
+  '..e.e.....',
+  '...e......',
+  '..........',
+  'nnnnnnnn..',
+  'nnnnnnnnnn',
+  'nnnnnnnn.n',
+  'nnnnnnnn.n',
+  'nnnnnnnnnn',
+  '.nnnnnn...',
+  'eeeeeeeeee']},
+];
+function pxClues(line){const c=[];let r=0;for(const v of line){if(v)r++;else if(r){c.push(r);r=0}}if(r)c.push(r);return c.length?c:[0]}
+function pxCluesOf(sol){const h=sol.length,w=sol[0].length;
+  return {rows:sol.map(pxClues),cols:Array.from({length:w},(_,x)=>pxClues(sol.map(r=>r[x])))}}
+// line solve: cells: -1 unknown, 0 empty, 1 filled. returns new array or null on contradiction
+function pxSolveLine(clue,cells){
+  const n=cells.length,k=(clue.length===1&&clue[0]===0)?[]:clue;
+  const canF=new Array(n).fill(false),canE=new Array(n).fill(false);
+  // memo: can place blocks i.. starting at pos p
+  const memo=new Map();
+  function ok(i,p){
+    const key=i*(n+2)+p;if(memo.has(key))return memo.get(key);
+    let res=false;
+    if(i===k.length){res=true;for(let q=p;q<n;q++)if(cells[q]===1){res=false;break}
+      if(res)for(let q=p;q<n;q++)canE[q]=true;memo.set(key,res);return res}
+    const len=k[i];
+    for(let s=p;s+len<=n;s++){
+      // cells p..s-1 empty
+      if(s>p&&cells[s-1]===1)break;
+      let fits=true;for(let q=s;q<s+len;q++)if(cells[q]===0){fits=false;break}
+      if(!fits)continue;
+      if(s+len<n&&cells[s+len]===1)continue;
+      const next=s+len+(s+len<n?1:0);
+      if(ok(i+1,next)){res=true;for(let q=p;q<s;q++)canE[q]=true;for(let q=s;q<s+len;q++)canF[q]=true;if(s+len<n)canE[s+len]=true}
+    }
+    memo.set(key,res);return res;
+  }
+  if(!ok(0,0))return null;
+  return cells.map((v,i)=>v!==-1?v:(canF[i]&&!canE[i]?1:(!canF[i]&&canE[i]?0:-1)));
+}
+// returns 'unique' if line logic solves fully, 'stuck' otherwise, 'bad' on contradiction
+function pxLogicSolve(clues,h,w){
+  const g=Array.from({length:h},()=>new Array(w).fill(-1));
+  let changed=true;
+  while(changed){changed=false;
+    for(let y=0;y<h;y++){const r=pxSolveLine(clues.rows[y],g[y]);if(!r)return 'bad';for(let x=0;x<w;x++)if(r[x]!==g[y][x]){g[y][x]=r[x];changed=true}}
+    for(let x=0;x<w;x++){const col=g.map(r=>r[x]);const r=pxSolveLine(clues.cols[x],col);if(!r)return 'bad';for(let y=0;y<h;y++)if(r[y]!==g[y][x]){g[y][x]=r[y];changed=true}}
+  }
+  return g.every(r=>r.every(v=>v!==-1))?'unique':'stuck';
+}
+function pxPicSol(p){return p.rows.map(r=>[...r].map(c=>c==='.'?0:1))}
+function pxGenerate(n){
+  for(let t=0;t<200;t++){
+    const d=.5+Math.random()*.12;
+    let g=Array.from({length:n},()=>Array.from({length:n},()=>Math.random()<d?1:0));
+    // smooth once to make blobs
+    if(n>5){g=g.map((r,y)=>r.map((v,x)=>{let s=0,c=0;for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const yy=y+dy,xx=x+dx;if(yy>=0&&yy<n&&xx>=0&&xx<n){s+=g[yy][xx];c++}}
+      return Math.random()<.65?(s/c>.5?1:0):v}))}
+    if(g.some(r=>r.every(v=>!v))&&n<=5)continue;
+    if(pxLogicSolve(pxCluesOf(g),n,n)==='unique')return g;
+  }
+  return null;
+}
+
+const $=s=>document.querySelector(s);
+const store={get(k,d){try{const v=localStorage.getItem('sukima_px_'+k);return v!=null?JSON.parse(v):d}catch(e){return d}},
+  set(k,v){try{localStorage.setItem('sukima_px_'+k,JSON.stringify(v))}catch(e){}}};
+const fmt=s=>{s=Math.floor(s||0);return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')};
+let P=null,tool=1,missOn=store.get('miss',false),hist=[],tAcc=0,tStart=null,tIv=null;
+
+/* ---------- clock ---------- */
+const now=()=>tAcc+(tStart?(performance.now()-tStart)/1000:0);
+function clockRun(){if(tStart)return;tStart=performance.now();tIv=setInterval(()=>$('#time').textContent=fmt(now()),500);$('#time').textContent=fmt(now())}
+function clockStop(){if(!tStart)return;tAcc=now();tStart=null;clearInterval(tIv);$('#time').textContent=fmt(tAcc)}
+
+/* ---------- menu ---------- */
+function thumb(sol,rows,scale){const h=sol.length,w=sol[0].length,c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');
+  for(let y=0;y<h;y++)for(let xx=0;xx<w;xx++)if(sol[y][xx]){x.fillStyle=rows?PX_PAL[rows[y][xx]]||'#2B2B33':getComputedStyle(document.documentElement).getPropertyValue('--ink').trim();x.fillRect(xx,y,1,1)}
+  return c}
+function showMenu(){
+  clockStop();if(P&&!P.done)save();P=null;
+  $('#menu').hidden=false;$('#play').hidden=true;$('#time').hidden=true;$('#title').textContent='ピクロス';$('#back').href='./';
+  const solved=store.get('solved',[]);
+  $('#pics').innerHTML='';
+  PX_PICS.forEach(p=>{const b=document.createElement('button');b.type='button';b.className='pic';const s=pxPicSol(p),done=solved.includes(p.id);
+    if(done)b.appendChild(thumb(s,p.rows));else{const q=document.createElement('div');q.className='q';q.textContent='?';b.appendChild(q)}
+    b.insertAdjacentHTML('beforeend',`<span>${done?p.name:'？？？'}</span><small>${s[0].length}×${s.length}</small>`);
+    b.onclick=()=>startPic(p);$('#pics').appendChild(b)});
+  const best=store.get('best',{});
+  $('#autos').innerHTML=[5,10,15].map(n=>`<button class="auto" type="button" data-n="${n}"><b>${n}×${n}</b><small>ベスト ${best[n]!=null?fmt(best[n]):'--:--'}</small></button>`).join('');
+  const cur=store.get('cur',null);
+  const r=$('#resume');
+  if(cur&&!cur.done){r.hidden=false;r.innerHTML=`つづきから遊ぶ<small>${cur.kind==='pic'?'絵の問題 '+cur.sol[0].length+'×'+cur.sol.length:'自動生成 '+cur.sol.length+'×'+cur.sol.length}・${fmt(cur.time)}</small>`;r.onclick=()=>load(cur)}
+  else r.hidden=true;
+}
+$('#autos').addEventListener('click',e=>{const b=e.target.closest('[data-n]');if(b)startAuto(+b.dataset.n)});
+
+/* ---------- start ---------- */
+function startPic(p){const sol=pxPicSol(p);load({kind:'pic',id:p.id,sol,marks:sol.map(r=>r.map(()=>0)),time:0,miss:0})}
+function startAuto(n){
+  $('#msg').textContent='問題を作っています…';
+  setTimeout(()=>{const sol=pxGenerate(n);if(!sol){$('#msg').textContent='問題を作れませんでした。もう一度選んでください';return}
+    load({kind:'auto',sol,marks:sol.map(r=>r.map(()=>0)),time:0,miss:0})},20);
+}
+function load(st){
+  P=st;P.clues=pxCluesOf(P.sol);P.h=P.sol.length;P.w=P.sol[0].length;hist=[];
+  $('#menu').hidden=true;$('#play').hidden=false;$('#time').hidden=false;$('#back').href='#';
+  $('#title').textContent=P.kind==='pic'?`ピクロス ${P.w}×${P.h}`:`自動生成 ${P.w}×${P.h}`;
+  tAcc=P.time||0;tStart=null;clockRun();build();render();
+}
+function save(){if(!P)return;P.time=now();store.set('cur',{kind:P.kind,id:P.id,sol:P.sol,marks:P.marks,time:P.time,miss:P.miss,done:P.done})}
+
+/* ---------- board ---------- */
+let cells=[],rcs=[],ccs=[];
+function build(){
+  const b=$('#board'),{h,w,clues}=P;
+  const maxR=Math.max(...clues.rows.map(c=>c.length)),maxC=Math.max(...clues.cols.map(c=>c.length));
+  const st=$('#stage').getBoundingClientRect();
+  const availW=Math.min(st.width,520),availH=st.height;
+  let cs=Math.floor(Math.min(42,(availW-4)/(w+maxR*.62),(availH-4)/(h+maxC*.75)));
+  cs=Math.max(cs,14);
+  const fs=Math.max(9,Math.min(15,cs*.52));
+  b.style.gridTemplateColumns=`${Math.ceil(maxR*fs*.95+6)}px repeat(${w},${cs}px)`;
+  b.style.gridTemplateRows=`${Math.ceil(maxC*fs*1.2+4)}px repeat(${h},${cs}px)`;
+  b.style.fontSize=fs+'px';
+  b.innerHTML='';cells=[];rcs=[];ccs=[];
+  b.appendChild(document.createElement('div'));
+  for(let x=0;x<w;x++){const d=document.createElement('div');d.className='cc';d.innerHTML=clues.cols[x].map(v=>`<span>${v}</span>`).join('');b.appendChild(d);ccs.push(d)}
+  for(let y=0;y<h;y++){
+    const r=document.createElement('div');r.className='rc';r.innerHTML=clues.rows[y].map(v=>`<span>${v}</span>`).join('');b.appendChild(r);rcs.push(r);
+    cells[y]=[];
+    for(let x=0;x<w;x++){const c=document.createElement('div');c.className='cell';c.dataset.x=x;c.dataset.y=y;
+      if(x===0)c.classList.add('l0');if(y===0)c.classList.add('top0');
+      if((x+1)%5===0||x===w-1)c.classList.add('t5');if((y+1)%5===0||y===h-1)c.classList.add('b5');
+      b.appendChild(c);cells[y][x]=c}
+  }
+}
+function lineDone(line,clue){const c=pxClues(line);return c.length===clue.length&&c.every((v,i)=>v===clue[i])}
+function render(hy=-1,hx=-1){
+  const {h,w,marks,sol}=P;
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){const m=marks[y][x],c=cells[y][x];
+    c.className=c.className.replace(/ ?\b(f|x|bad)\b/g,'');
+    if(m===1)c.classList.add('f');else if(m===2)c.classList.add('x');else if(m===3)c.classList.add('x','bad')}
+  for(let y=0;y<h;y++){rcs[y].classList.toggle('done',lineDone(marks[y].map(v=>v===1),P.clues.rows[y]));rcs[y].classList.toggle('hl',y===hy)}
+  for(let x=0;x<w;x++){ccs[x].classList.toggle('done',lineDone(marks.map(r=>r[x]===1),P.clues.cols[x]));ccs[x].classList.toggle('hl',x===hx)}
+  const m=$('#msg');m.className='msg'+(P.miss?' warn':'');
+  m.textContent=missOn?`ミス ${P.miss}`:'数字の数だけ、続けて塗る';
+}
+function cellAt(e){const el=document.elementFromPoint(e.clientX,e.clientY);return el&&el.classList.contains('cell')?[+el.dataset.y,+el.dataset.x]:null}
+let drag=null;
+function apply(y,x){
+  const cur=P.marks[y][x];if(cur===3)return;
+  const t=drag.target;
+  if(t===0){if((cur===1)!==(drag.from===1)||cur===0)return;P.marks[y][x]=0;return}
+  if(t===2&&cur===1)return;
+  if(cur===t)return;
+  if(t===1&&missOn&&P.sol[y][x]===0){P.marks[y][x]=3;P.miss++;return}
+  P.marks[y][x]=t;
+}
+$('#board').addEventListener('pointerdown',e=>{
+  if(!P||P.done)return;const c=cellAt(e);if(!c)return;e.preventDefault();
+  const [y,x]=c,cur=P.marks[y][x];if(cur===3)return;
+  hist.push(P.marks.map(r=>r.slice()));if(hist.length>200)hist.shift();
+  drag={y,x,axis:null,from:cur,target:tool===1?(cur===1?0:1):(cur===2?0:(cur===1?-1:2))};
+  if(drag.target===-1){drag=null;hist.pop();return}
+  try{$('#board').setPointerCapture(e.pointerId)}catch(_){}
+  apply(y,x);render(y,x);
+});
+$('#board').addEventListener('pointermove',e=>{
+  if(!drag)return;const c=cellAt(e);if(!c)return;let [y,x]=c;
+  if(!drag.axis&&(y!==drag.y||x!==drag.x))drag.axis=y!==drag.y?'v':'h';
+  if(drag.axis==='v')x=drag.x;else if(drag.axis==='h')y=drag.y;
+  const y0=Math.min(y,drag.y),y1=Math.max(y,drag.y),x0=Math.min(x,drag.x),x1=Math.max(x,drag.x);
+  for(let yy=y0;yy<=y1;yy++)for(let xx=x0;xx<=x1;xx++)apply(yy,xx);
+  render(y,x);
+});
+function endDrag(){if(!drag)return;drag=null;render();check();save()}
+$('#board').addEventListener('pointerup',endDrag);$('#board').addEventListener('pointercancel',endDrag);
+
+function check(){
+  const {h,w,marks,sol}=P;
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++)if((marks[y][x]===1)!==(sol[y][x]===1))return;
+  P.done=true;clockStop();P.time=tAcc;
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++)if(marks[y][x]!==1)marks[y][x]=2;
+  render();
+  store.set('count',store.get('count',0)+1);
+  let newBest=false;
+  if(P.kind==='pic'){const s=store.get('solved',[]);if(!s.includes(P.id)){s.push(P.id);store.set('solved',s)}}
+  else{const b=store.get('best',{});if(b[w]==null||P.time<b[w]){b[w]=Math.floor(P.time);newBest=true;store.set('best',b)}}
+  store.set('cur',null);
+  const pic=P.kind==='pic'?PX_PICS.find(p=>p.id===P.id):null;
+  setTimeout(()=>{
+    $('#layer').innerHTML=`<div class="scrim"><div class="sheet"><h3>${pic?`「${pic.name}」でした！`:'クリア！'}</h3>
+      <div class="reveal" id="rv"></div>
+      <p style="text-align:center">タイム ${fmt(P.time)}${newBest?'　ベスト更新！':''}${missOn&&P.miss?`　ミス ${P.miss}`:''}</p>
+      <div class="row"><button class="btn" type="button" data-a="quit">やめる</button><button class="btn primary" type="button" data-a="next">自動生成で続ける</button></div></div></div>`;
+    const cv=thumb(P.sol,pic?pic.rows:null);$('#rv').appendChild(cv);
+    $('#layer').querySelector('.sheet').onclick=e=>{const b=e.target.closest('[data-a]');if(!b)return;const n=P.w;$('#layer').innerHTML='';
+      if(b.dataset.a==='quit')showMenu();else startAuto(n)};
+  },350);
+}
+
+/* ---------- controls ---------- */
+$('#tool').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;tool=+b.dataset.v;for(const x of $('#tool').children)x.setAttribute('aria-pressed',String(x===b))});
+$('#miss').setAttribute('aria-pressed',String(missOn));
+$('#miss').onclick=()=>{missOn=!missOn;store.set('miss',missOn);$('#miss').setAttribute('aria-pressed',String(missOn));if(P)render()};
+$('#undo').onclick=()=>{if(!P||P.done||!hist.length)return;P.marks=hist.pop();render();save()};
+$('#clear').onclick=()=>{if(!P||P.done)return;hist.push(P.marks.map(r=>r.slice()));P.marks=P.marks.map(r=>r.map(()=>0));P.miss=0;render();save()};
+$('#quit').onclick=showMenu;
+$('#back').addEventListener('click',e=>{if(P){e.preventDefault();showMenu()}});
+document.addEventListener('visibilitychange',()=>{if(document.hidden){if(P&&!P.done){clockStop();save()}}else if(P&&!P.done)clockRun()});
+window.addEventListener('pagehide',()=>{if(P&&!P.done)save()});
+new ResizeObserver(()=>{if(P){build();render()}}).observe($('#stage'));
+showMenu();
+</script>
+<script>if("serviceWorker" in navigator&&location.protocol.startsWith("http")){navigator.serviceWorker.register("sw.js").catch(()=>{})}</script>
+</body>
+</html>

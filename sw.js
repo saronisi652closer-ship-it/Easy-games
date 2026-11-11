@@ -1,5 +1,5 @@
-const CACHE="sukima-box-v2";
-const FILES=["./","./index.html","./cardbattle.html","./manifest.webmanifest","./icons/icon-192.png","./icons/icon-512.png","./icons/icon-180.png"];
+const CACHE="sukima-box-v4";
+const FILES=["./","./index.html","./cardbattle.html","./picross.html","./machigai.html","./ikusei.html","./manifest.webmanifest","./icons/icon-192.png","./icons/icon-512.png","./icons/icon-180.png"];
 self.addEventListener("install",e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(FILES)));self.skipWaiting()});
 self.addEventListener("activate",e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))));self.clients.claim()});
 self.addEventListener("fetch",e=>{

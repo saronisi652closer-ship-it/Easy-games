@@ -22,7 +22,7 @@
   --mark:#F7C843; --markInk:#18264A; --pen:#D2433A; --penBg:#FBE3E0; --pencil:#2F63D3; --ok:#2B8A57;
   --peer:#E3E9F3; --same:#CFDCF5;
   --board:#2D7A57; --boardLine:#1C5A3F; --discB:#141414; --discW:#F5F5EF;
-  --skyTop:#BFD8F2; --skyBot:#EAF2FA; --far:#A9C3DE; --ground:#6C8F4E; --groundTop:#3F6A2C; --rock:#7D7F86;
+  --skyTop:#BFD8F2; --skyBot:#EAF2FA; --far:#A9C3DE; --ground:#6C8F4E; --groundTop:#3F6A2C; --rock:#7D7F86; --steel:#9AA6B8; --steelHi:#E4E9F1;
   --display:"Dela Gothic One","Hiragino Sans","Noto Sans JP",sans-serif;
   --body:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",system-ui,sans-serif;
 }
@@ -30,13 +30,13 @@
   --paper:#111827; --grid:#1A2335; --card:#1B2438; --ink:#E4E9F3; --ink2:#97A3BD; --line:#33405A;
   --mark:#F2C23A; --markInk:#18264A; --pen:#FF6B5F; --penBg:#3F2023; --pencil:#7FA6FF; --ok:#4FC283;
   --peer:#232E46; --same:#2B3E66;
-  --skyTop:#0E1830; --skyBot:#24345A; --far:#1E2C4C; --ground:#2F4A2A; --groundTop:#6FA052; --rock:#6A6E78;
+  --skyTop:#0E1830; --skyBot:#24345A; --far:#1E2C4C; --ground:#2F4A2A; --groundTop:#6FA052; --rock:#6A6E78; --steel:#7D889C; --steelHi:#C9D2E0;
   color-scheme:dark}}
 :root[data-theme="dark"]{
   --paper:#111827; --grid:#1A2335; --card:#1B2438; --ink:#E4E9F3; --ink2:#97A3BD; --line:#33405A;
   --mark:#F2C23A; --markInk:#18264A; --pen:#FF6B5F; --penBg:#3F2023; --pencil:#7FA6FF; --ok:#4FC283;
   --peer:#232E46; --same:#2B3E66;
-  --skyTop:#0E1830; --skyBot:#24345A; --far:#1E2C4C; --ground:#2F4A2A; --groundTop:#6FA052; --rock:#6A6E78;
+  --skyTop:#0E1830; --skyBot:#24345A; --far:#1E2C4C; --ground:#2F4A2A; --groundTop:#6FA052; --rock:#6A6E78; --steel:#7D889C; --steelHi:#C9D2E0;
   color-scheme:dark}
 
 html,body{height:100%}
@@ -135,6 +135,8 @@ button:focus-visible,a:focus-visible{outline:3px solid var(--mark);outline-offse
 .rn-over h3{margin:0;font:400 26px var(--display);text-shadow:0 2px 0 rgba(0,0,0,.35)}
 .rn-over p{margin:0;font-weight:700;text-shadow:0 1px 0 rgba(0,0,0,.4)}
 .rn-over .big{font:400 40px var(--display);font-variant-numeric:tabular-nums}
+.it-wrap{width:100%;height:100%;position:relative;border:2px solid var(--ink);border-radius:12px;overflow:hidden;background:var(--card)}
+.it-wrap canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none}
 .rn-help{font-size:12px;color:var(--ink2);text-align:center;margin:0}
 
 @media (prefers-reduced-motion: reduce){.disc.flip{animation:none}.card{transition:none}}
@@ -170,6 +172,26 @@ button:focus-visible,a:focus-visible{outline:3px solid var(--mark);outline-offse
         <div><h3>坂道チャリ</h3><p class="d">タップでジャンプ、空中でもう1回</p><p class="s" id="s-rn"></p></div>
         <span class="go">›</span>
       </a>
+      <a class="card" href="#ito">
+        <svg viewBox="0 0 56 56" aria-hidden="true"><rect x="3" y="3" width="50" height="50" rx="5" fill="var(--card)" stroke="var(--ink)" stroke-width="2.5"/><path d="M33 5V44L35 51L37 44V5Z" fill="var(--steel)"/><rect x="34" y="13" width="2" height="10" rx="1" fill="var(--card)" stroke="var(--ink)" stroke-width=".8"/><path d="M6 40C14 40 16 18 24 18S30 18 44 18" fill="none" stroke="var(--pen)" stroke-width="2.6" stroke-linecap="round"/></svg>
+        <div><h3>糸通し</h3><p class="d">押して上がる操作で針の穴を通す</p><p class="s" id="s-it"></p></div>
+        <span class="go">›</span>
+      </a>
+      <a class="card" href="picross.html">
+        <svg viewBox="0 0 56 56" aria-hidden="true"><rect x="3" y="3" width="50" height="50" rx="5" fill="var(--card)" stroke="var(--ink)" stroke-width="2.5"/><g fill="var(--ink)"><rect x="19" y="19" width="8" height="8"/><rect x="35" y="19" width="8" height="8"/><rect x="19" y="27" width="24" height="8"/><rect x="27" y="35" width="8" height="8"/></g><path d="M19 11v8M27 11v8M35 11v8M43 11v8M11 19h8M11 27h8M11 35h8M11 43h8" stroke="var(--line)" stroke-width="1"/><text x="13" y="17" font-size="7" font-weight="900" fill="var(--ink2)">1</text></svg>
+        <div><h3>ピクロス</h3><p class="d">数字をヒントにマスを塗って絵を出す</p><p class="s" id="s-px"></p></div>
+        <span class="go">›</span>
+      </a>
+      <a class="card" href="machigai.html">
+        <svg viewBox="0 0 56 56" aria-hidden="true"><rect x="3" y="3" width="50" height="23" rx="4" fill="#9FD0F2"/><rect x="3" y="30" width="50" height="23" rx="4" fill="#9FD0F2"/><circle cx="18" cy="14" r="5" fill="#F2C23A"/><circle cx="18" cy="41" r="5" fill="#D2433A"/><rect x="32" y="12" width="12" height="10" fill="#4FA35A"/><rect x="32" y="39" width="12" height="10" fill="#4FA35A"/><circle cx="18" cy="41" r="9" fill="none" stroke="var(--ok)" stroke-width="2.5"/></svg>
+        <div><h3>間違い探し</h3><p class="d">上と下の絵の違うところをタップ</p><p class="s" id="s-mg"></p></div>
+        <span class="go">›</span>
+      </a>
+      <a class="card" href="ikusei.html">
+        <svg viewBox="0 0 56 56" aria-hidden="true"><rect x="5" y="3" width="46" height="50" rx="20" fill="var(--mark)" stroke="var(--ink)" stroke-width="2.5"/><rect x="13" y="15" width="30" height="20" rx="3" fill="#C5D19B" stroke="var(--ink)" stroke-width="1.5"/><g fill="#2E3A1C"><rect x="23" y="20" width="10" height="2"/><rect x="21" y="22" width="2" height="8"/><rect x="33" y="22" width="2" height="8"/><rect x="23" y="30" width="10" height="2"/><rect x="25" y="24" width="2" height="2"/><rect x="29" y="24" width="2" height="2"/></g><circle cx="20" cy="43" r="3" fill="var(--ink)"/><circle cx="28" cy="45" r="3" fill="var(--ink)"/><circle cx="36" cy="43" r="3" fill="var(--ink)"/></svg>
+        <div><h3>ドット育成</h3><p class="d">タマゴから育てて進化させる</p><p class="s" id="s-ik"></p></div>
+        <span class="go">›</span>
+      </a>
       <a class="card" href="cardbattle.html">
         <svg viewBox="0 0 56 56" aria-hidden="true"><rect x="3" y="3" width="50" height="50" rx="5" fill="#1c2c35"/><rect x="10" y="12" width="20" height="30" rx="3" fill="#efe6d2" stroke="#b8894f" stroke-width="2" transform="rotate(-10 20 27)"/><rect x="26" y="14" width="20" height="30" rx="3" fill="#e7dff1" stroke="#8f6bbd" stroke-width="2" transform="rotate(8 36 29)"/><circle cx="13" cy="13" r="5" fill="#e4a93c" stroke="#10191f" stroke-width="1.5"/></svg>
         <div><h3>カードバトル<span class="badge">試作版</span></h3><p class="d">マナで召喚してCPUと1対1で対戦</p><p class="s" id="s-cb"></p></div>
@@ -181,7 +203,7 @@ button:focus-visible,a:focus-visible{outline:3px solid var(--mark);outline-offse
 
   <!-- SUDOKU -->
   <section class="view" id="v-sudoku" hidden>
-    <header class="bar"><a class="back" href="#">‹ 箱</a><h2>ナンプレ</h2><span class="timer" id="sd-time">00:00</span></header>
+    <header class="bar"><a class="back" href="#">‹ 戻る</a><h2>ナンプレ</h2><span class="timer" id="sd-time">00:00</span></header>
     <div class="opts">
       <div class="seg" id="sd-diff" role="group" aria-label="難しさ">
         <button type="button" data-v="easy">かんたん</button><button type="button" data-v="normal">ふつう</button><button type="button" data-v="hard">むずかしい</button>
@@ -203,7 +225,7 @@ button:focus-visible,a:focus-visible{outline:3px solid var(--mark);outline-offse
 
   <!-- OTHELLO -->
   <section class="view" id="v-othello" hidden>
-    <header class="bar"><a class="back" href="#">‹ 箱</a><h2>オセロ</h2><span class="timer" id="ot-rec">0勝0敗</span></header>
+    <header class="bar"><a class="back" href="#">‹ 戻る</a><h2>オセロ</h2><span class="timer" id="ot-rec">0勝0敗</span></header>
     <div class="opts">
       <div class="seg" id="ot-lv" role="group" aria-label="CPUの強さ">
         <button type="button" data-v="easy">よわい</button><button type="button" data-v="normal">ふつう</button><button type="button" data-v="hard">つよい</button>
@@ -220,7 +242,7 @@ button:focus-visible,a:focus-visible{outline:3px solid var(--mark);outline-offse
 
   <!-- SLITHERLINK -->
   <section class="view" id="v-slither" hidden>
-    <header class="bar"><a class="back" href="#">‹ 箱</a><h2>スリザーリンク</h2><span class="timer" id="sl-time">00:00</span></header>
+    <header class="bar"><a class="back" href="#">‹ 戻る</a><h2>スリザーリンク</h2><span class="timer" id="sl-time">00:00</span></header>
     <div class="opts">
       <div class="seg" id="sl-size" role="group" aria-label="大きさ">
         <button type="button" data-v="5">5×5</button><button type="button" data-v="6">6×6</button><button type="button" data-v="7">7×7</button>
@@ -241,13 +263,20 @@ button:focus-visible,a:focus-visible{outline:3px solid var(--mark);outline-offse
 
   <!-- RUNNER -->
   <section class="view" id="v-runner" hidden>
-    <header class="bar"><a class="back" href="#">‹ 箱</a><h2>坂道チャリ</h2><span class="timer" id="rn-best">ベスト 0m</span></header>
+    <header class="bar"><a class="back" href="#">‹ 戻る</a><h2>坂道チャリ</h2><span class="timer" id="rn-best">ベスト 0m</span></header>
     <div class="stage" style="padding-bottom:10px">
       <div class="rn-wrap" id="rn-wrap"><canvas id="rn-cv"></canvas>
         <div class="rn-over" id="rn-over"><h3>坂道チャリ</h3><p>タップでジャンプ・空中でもう1回</p><p>穴と岩に気をつけて</p><p class="big" id="rn-big" hidden></p><p id="rn-sub">タップでスタート</p></div>
       </div>
     </div>
     <p class="rn-help">スペースキー・↑キーでもジャンプできます</p>
+    <div style="height:14px"></div>
+  </section>
+  <!-- ITODOSHI -->
+  <section class="view" id="v-ito" hidden>
+    <header class="bar"><a class="back" href="#">‹ 戻る</a><h2>糸通し</h2><span class="timer" id="it-best">ベスト 0本</span></header>
+    <div class="stage" style="padding-bottom:10px"><div class="it-wrap" id="it-wrap"><canvas id="it-cv"></canvas></div></div>
+    <p class="rn-help">押すと上がり、離すと下がる（スペースキーでも可）</p>
     <div style="height:14px"></div>
   </section>
 </div>
@@ -717,21 +746,104 @@ function rnLoopStart(){if(!RN.raf){RN.last=performance.now();RN.raf=requestAnima
 function rnEnter(){rnBest();if(!RN.R)rnReset();rnOverlay();requestAnimationFrame(rnDraw)}
 function rnLeave(){if(RN.state==='play'){RN.state='paused';rnOverlay()}}
 
+/* ---------- 糸通し ---------- */
+const IT={cv:$('#it-cv'),W:0,H:0,C:{},raf:0,last:0,state:'ready',best:store.get('itBest',0)};
+IT.ctx=IT.cv.getContext('2d');
+function itColors(){const m={paper:'--paper',card:'--card',ink:'--ink',ink2:'--ink2',grid:'--grid',thread:'--pen',ok:'--ok',steel:'--steel',steelHi:'--steelHi'};for(const k in m)IT.C[k]=css(m[k])}
+function itSize(){const r=$('#it-wrap').getBoundingClientRect();if(!r.width)return;const d=window.devicePixelRatio||1;
+  const changed=Math.abs(r.width-IT.W)>1||Math.abs(r.height-IT.H)>1;IT.W=r.width;IT.H=r.height;IT.cv.width=Math.round(IT.W*d);IT.cv.height=Math.round(IT.H*d);IT.ctx.setTransform(d,0,0,d,0,0);
+  itColors();if(changed&&IT.state!=='play'&&IT.state!=='paused')itReset();itDraw()}
+const itHx=()=>IT.W*.28;
+function itReset(){
+  Object.assign(IT,{state:'ready',hold:false,cam:0,y:IT.H/2,vy:0,trail:[],needles:[],nextX:IT.W*.28+340,count:0,combo:0,flash:null});
+  while(IT.nextX<IT.W+600)itSpawn();
+}
+function itSpawn(){
+  const H=IT.H,n=IT.needles.length,eh=Math.max(24,Math.min(H*.2,96)-n*2.6),margin=eh/2+H*.1;
+  const prev=IT.needles[n-1],py=prev?prev.base:H/2,swing=Math.min(H*.45,H*.18+n*H*.012);
+  const base=Math.max(margin,Math.min(H-margin,py+rnd(-swing,swing)));
+  const amp=n<8?0:Math.min(H*.16,(n-7)*H*.012),sp=n<8?0:.9+(n-8)*.05;
+  IT.needles.push({x:IT.nextX,base,eh,amp,sp,ph:rnd(0,6),eyeY:base,done:false,minD:0});
+  IT.nextX+=Math.max(165,300-n*5.5);
+}
+function itUpdate(dt){
+  if(IT.flash){IT.flash.t-=dt;if(IT.flash.t<=0)IT.flash=null}
+  if(IT.state!=='play')return;
+  const H=IT.H;IT.cam+=Math.min(320,150+IT.count*5)*dt;
+  IT.vy+=(IT.hold?-1050:900)*dt;IT.vy=clamp(IT.vy,-320,320);IT.y+=IT.vy*dt;
+  const wx=IT.cam+itHx();
+  IT.trail.push([wx,IT.y]);while(IT.trail.length&&IT.trail[0][0]<IT.cam-20)IT.trail.shift();
+  while(IT.nextX<IT.cam+IT.W+600)itSpawn();
+  for(const nd of IT.needles)if(nd.amp){nd.ph+=dt*nd.sp;nd.eyeY=clamp(nd.base+Math.sin(nd.ph)*nd.amp,nd.eh/2+4,H-nd.eh/2-4)}
+  if(IT.y<2||IT.y>H-2)return itDie('はみ出した！');
+  for(const nd of IT.needles){
+    if(nd.done)continue;
+    if(wx>=nd.x-6&&wx<=nd.x+6){const d=Math.abs(IT.y-nd.eyeY);if(d>nd.eh/2-3)return itDie('針に当たった！');nd.minD=Math.max(nd.minD,d)}
+    if(wx>nd.x+6){nd.done=true;IT.count++;
+      if(nd.minD<=Math.max(3,nd.eh*.14)){IT.combo++;IT.flash={t:.7,txt:IT.combo>1?`ど真ん中！ ×${IT.combo}`:'ど真ん中！'}}else IT.combo=0}
+  }
+  while(IT.needles.length&&IT.needles[0].x<IT.cam-60)IT.needles.shift();
+}
+function itDie(why){IT.state='over';IT.why=why;IT.overAt=performance.now();IT.newBest=IT.count>IT.best;if(IT.newBest){IT.best=IT.count;store.set('itBest',IT.count)}itBestTxt()}
+function itBestTxt(){$('#it-best').textContent=`ベスト ${IT.best}本`}
+function itText(t,y,size,color,disp){const x=IT.ctx;x.fillStyle=color;x.font=disp?`400 ${size}px "Dela Gothic One",sans-serif`:`900 ${size}px "Zen Kaku Gothic New",sans-serif`;x.textAlign='center';x.textBaseline='middle';x.fillText(t,IT.W/2,y)}
+function itPanel(lines){const x=IT.ctx;x.globalAlpha=.9;x.fillStyle=IT.C.card;x.fillRect(0,IT.H/2-70,IT.W,140);x.globalAlpha=1;lines.forEach(([t,dy,s,c,d])=>itText(t,IT.H/2+dy,s,c,d))}
+function itDraw(){
+  const x=IT.ctx,C=IT.C,W=IT.W,H=IT.H;if(!W)return;
+  x.fillStyle=C.card;x.fillRect(0,0,W,H);
+  for(let gx=-((IT.cam||0)%44);gx<W;gx+=44){x.fillStyle=C.grid;x.fillRect(gx,0,1,H)}
+  for(const nd of IT.needles){
+    const nx=nd.x-IT.cam;if(nx<-20||nx>W+20)continue;
+    const g=x.createLinearGradient(nx-6,0,nx+6,0);g.addColorStop(0,C.steel);g.addColorStop(.45,C.steelHi);g.addColorStop(1,C.steel);
+    x.fillStyle=g;x.beginPath();x.moveTo(nx-6,-10);x.lineTo(nx+6,-10);x.lineTo(nx+6,H-24);x.lineTo(nx,H+10);x.lineTo(nx-6,H-24);x.closePath();x.fill();
+    x.fillStyle=nd.done?C.grid:C.card;x.beginPath();x.roundRect(nx-3,nd.eyeY-nd.eh/2,6,nd.eh,3);x.fill();x.strokeStyle=C.ink;x.lineWidth=1.5;x.stroke();
+  }
+  if(IT.trail.length>1){x.beginPath();IT.trail.forEach(([tx,ty],i)=>{const sx=tx-IT.cam;i?x.lineTo(sx,ty):x.moveTo(sx,ty)});
+    x.strokeStyle=C.thread;x.lineWidth=3;x.lineCap='round';x.lineJoin='round';x.stroke()}
+  x.fillStyle=C.thread;x.beginPath();x.arc(itHx(),IT.y,4.5,0,7);x.fill();
+  if(IT.state!=='ready'){x.fillStyle=C.ink;x.font='400 22px "Dela Gothic One",sans-serif';x.textAlign='left';x.textBaseline='top';x.fillText(IT.count+'本',12,10)}
+  if(IT.flash){x.globalAlpha=Math.min(1,IT.flash.t*2);itText(IT.flash.txt,H*.14,22,C.ok,1);x.globalAlpha=1}
+  if(IT.state==='ready')itPanel([['糸通し',-30,26,C.ink,1],['押して上がる・離して下がる。針の穴を通そう',8,13.5,C.ink2],['タップでスタート',38,15,C.thread]]);
+  if(IT.state==='paused')itPanel([['一時停止中',-12,24,C.ink,1],['タップで再開',24,15,C.thread]]);
+  if(IT.state==='over')itPanel([[IT.why,-34,22,C.thread,1],[IT.count+'本',4,28,C.ink,1],[(IT.newBest?'ベスト更新！　':'')+'タップでもう一回',40,14,C.ink2]]);
+}
+function itFrame(t){if(current!=='ito'){IT.raf=0;return}const dt=Math.min(.033,(t-IT.last)/1000||0);IT.last=t;itUpdate(dt);itDraw();IT.raf=requestAnimationFrame(itFrame)}
+function itDown(){
+  if(IT.state==='ready'||IT.state==='paused'){IT.state='play';IT.hold=true;return}
+  if(IT.state==='over'){if(performance.now()-IT.overAt<500)return;itReset();IT.state='play';IT.hold=true;return}
+  IT.hold=true}
+(function(){
+  IT.cv.addEventListener('pointerdown',e=>{e.preventDefault();IT.cv.setPointerCapture?.(e.pointerId);itDown()});
+  for(const ev of ['pointerup','pointercancel','lostpointercapture'])IT.cv.addEventListener(ev,()=>{IT.hold=false});
+  document.addEventListener('keydown',e=>{if(current!=='ito')return;if((e.code==='Space'||e.key==='ArrowUp')&&!e.repeat){e.preventDefault();itDown()}});
+  document.addEventListener('keyup',e=>{if(current==='ito'&&(e.code==='Space'||e.key==='ArrowUp'))IT.hold=false});
+  new ResizeObserver(()=>{if(current==='ito')itSize()}).observe($('#it-wrap'));
+  matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(IT.W)itColors()});
+})();
+function itEnter(){itBestTxt();requestAnimationFrame(()=>{itSize();if(!IT.needles||!IT.needles.length)itReset();itDraw();if(!IT.raf){IT.last=performance.now();IT.raf=requestAnimationFrame(itFrame)}})}
+function itLeave(){IT.hold=false;if(IT.state==='play')IT.state='paused'}
+
 /* ---------- Home ---------- */
 function homeRender(){
-  const sb=store.get('sdBest',{});$('#s-sd').textContent='ベスト '+['easy','normal','hard'].map(k=>`${DIFF_JA[k]} ${sb[k]!=null?fmt(sb[k]):'--:--'}`).join('　');
+  const sb=store.get('sdBest',{});const SH={easy:'易',normal:'普',hard:'難'};$('#s-sd').textContent='ベスト '+['easy','normal','hard'].map(k=>`${SH[k]} ${sb[k]!=null?fmt(sb[k]):'--:--'}`).join('　');
   const sd=SD.st||store.get('sd',null);$('#b-sd').hidden=!(sd&&!sd.done);
   const or=store.get('otRec',{});let w=0,l=0;for(const k in or){w+=or[k].w;l+=or[k].l}$('#s-ot').textContent=`通算 ${w}勝${l}敗`+(or.hard?`（つよい ${or.hard.w}勝）`:'');
   const ot=OT.st||store.get('ot',null);$('#b-ot').hidden=!(ot&&!ot.over);
   const lb=store.get('slBest',{});$('#s-sl').textContent='ベスト '+[5,6,7].map(n=>`${n}×${n} ${lb[n]!=null?fmt(lb[n]):'--:--'}`).join('　');
   const sl=SL.st||store.get('sl',null);$('#b-sl').hidden=!(sl&&!sl.done);
   $('#s-rn').textContent=`ベスト ${RN.best}m`;
-  const cb=store.get('cbRec',{w:0,l:0});$('#s-cb').textContent=`通算 ${cb.w}勝${cb.l}敗`}
+  $('#s-it').textContent=`ベスト ${IT.best}本`;
+  const cb=store.get('cbRec',{w:0,l:0});$('#s-cb').textContent=`通算 ${cb.w}勝${cb.l}敗`;
+  const raw=k=>{try{const v=localStorage.getItem(k);return v!=null?JSON.parse(v):null}catch(e){return null}};
+  $('#s-px').textContent=`絵 ${(raw('sukima_px_solved')||[]).length}/8・クリア ${raw('sukima_px_count')||0}問`;
+  const mb=raw('sukima_mg_best')||{};$('#s-mg').textContent=`ベスト ふつう ${mb.normal!=null?fmt(mb.normal):'--:--'}・クリア ${raw('sukima_mg_count')||0}問`;
+  const ik=raw('sukima_ik_state');const IKN={egg:'タマゴ',puni:'プニ',puniru:'プニル',koron:'コロン',moyan:'モヤン',garudon:'ガルドン',fuwarin:'フワリン',buden:'ブーデン',keketto:'ケケット',garudrago:'ガルドラゴ',sorafuwa:'ソラフワ',gorodon:'ゴロドン',yamikeke:'ヤミケケ'};
+  $('#s-ik').textContent=ik?`育成中：${IKN[ik.form]||'？'}`:'まだタマゴをもらっていない'}
 
 /* ---------- Router ---------- */
 let current='home';
-const ENTER={sudoku:sdEnter,othello:otEnter,slither:slEnter,runner:rnEnter,home:homeRender};
-const LEAVE={sudoku:sdLeave,slither:slLeave,runner:rnLeave};
+const ENTER={sudoku:sdEnter,othello:otEnter,slither:slEnter,runner:rnEnter,ito:itEnter,home:homeRender};
+const LEAVE={sudoku:sdLeave,slither:slLeave,runner:rnLeave,ito:itLeave};
 function route(){const n=location.hash.slice(1);const next=ENTER[n]?n:'home';
   if(LEAVE[current]&&current!==next)LEAVE[current]();
   current=next;for(const v of document.querySelectorAll('.view'))v.hidden=v.id!=='v-'+next;ENTER[next]()}
