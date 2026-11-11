@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>オセロ｜すきま脳トレ箱</title>
+<meta name="theme-color" content="#EBF0F6">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icons/icon-192.png">
+<link rel="apple-touch-icon" href="../icons/icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap">
+<link rel="stylesheet" href="../common/base.css">
+<style>
+/* othello */
+.ot-board{width:min(100%,calc(100vh - 300px));width:min(100%,calc(100dvh - 300px));min-width:250px;max-width:100%;aspect-ratio:1;
+  display:grid;grid-template-columns:repeat(8,1fr);grid-template-rows:repeat(8,1fr);gap:1px;background:var(--boardLine);border:3px solid var(--boardLine);border-radius:6px}
+.oc{background:var(--board);border:0;padding:0;display:grid;place-items:center;min-width:0;min-height:0}
+.disc{width:80%;height:80%;border-radius:50%}
+.disc.b{background:var(--discB);box-shadow:inset 0 -3px 0 rgba(255,255,255,.1)}
+.disc.w{background:var(--discW);box-shadow:inset 0 -3px 0 rgba(0,0,0,.18)}
+.disc.flip{animation:flip .32s ease}
+@keyframes flip{50%{transform:scaleX(.08)}}
+.oc.last .disc{outline:2.5px solid var(--mark);outline-offset:1px}
+.oc.hint::after{content:"";width:22%;height:22%;border-radius:50%;background:rgba(255,255,255,.35)}
+.score{display:flex;justify-content:center;gap:18px;font-weight:900;font-size:17px;font-variant-numeric:tabular-nums}
+.score span{display:flex;align-items:center;gap:6px}
+.score i{width:16px;height:16px;border-radius:50%;display:inline-block;border:1.5px solid var(--ink)}
+.score i.b{background:var(--discB)} .score i.w{background:var(--discW)}
+</style>
+</head>
+<body>
+<div id="app">
+  <section class="view" id="v-othello">
+    <header class="bar"><a class="back" href="../index.html">‹ 戻る</a><h2>オセロ</h2><button class="btn" id="ot-list" type="button">一覧</button><span class="timer" id="ot-rec">0勝0敗</span></header>
+    <div class="opts">
+      <div class="seg" id="ot-lv" role="group" aria-label="CPUの強さ">
+        <button type="button" data-v="easy">よわい</button><button type="button" data-v="normal">ふつう</button><button type="button" data-v="hard">つよい</button>
+      </div>
+      <button class="btn primary" id="ot-new" type="button">新しい対局</button>
+      <button class="btn" id="ot-undo" type="button">待った</button>
+    </div>
+    <div class="stage"><div class="ot-board" id="ot-board"></div></div>
+    <div class="under">
+      <div class="score"><span><i class="b"></i>あなた <b id="ot-b">2</b></span><span><i class="w"></i>CPU <b id="ot-w">2</b></span></div>
+      <p class="msg" id="ot-msg"></p>
+    </div>
+  </section>
+
+</div>
+<div id="layer"></div>
+<script src="../common/save.js"></script>
+<script src="../common/ui.js"></script>
+<script src="../common/sfx.js"></script>
+<script>
+/* ===================== OTHELLO logic ===================== */
+const OD=[[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+function otFlips(b,i,p){
+  if(b[i])return [];
+  const res=[],r=i>>3,c=i&7,o=3-p;
+  for(const[dr,dc]of OD){let rr=r+dr,cc=c+dc;const line=[];
+    while(rr>=0&&rr<8&&cc>=0&&cc<8&&b[rr*8+cc]===o){line.push(rr*8+cc);rr+=dr;cc+=dc}
+    if(line.length&&rr>=0&&rr<8&&cc>=0&&cc<8&&b[rr*8+cc]===p)res.push(...line)}
+  return res;
+}
+function otMoves(b,p){const m=[];for(let i=0;i<64;i++)if(!b[i]&&otFlips(b,i,p).length)m.push(i);return m}
+function otApply(b,i,p){const nb=b.slice();const f=otFlips(b,i,p);nb[i]=p;for(const x of f)nb[x]=p;return nb}
+const OW=[120,-20,20,5,5,20,-20,120,-20,-40,-5,-5,-5,-5,-40,-20,20,-5,15,3,3,15,-5,20,5,-5,3,3,3,3,-5,5,5,-5,3,3,3,3,-5,5,20,-5,15,3,3,15,-5,20,-20,-40,-5,-5,-5,-5,-40,-20,120,-20,20,5,5,20,-20,120];
+function otEval(b){let s=0;for(let i=0;i<64;i++){if(b[i]===2)s+=OW[i];else if(b[i]===1)s-=OW[i]}
+  return s+6*(otMoves(b,2).length-otMoves(b,1).length)}
+function otFinal(b){let d=0;for(const x of b){if(x===2)d++;else if(x===1)d--}return d*1000}
+function otSearch(b,p,depth,al,be,passed){
+  if(depth===0)return otEval(b);
+  const ms=otMoves(b,p);
+  if(!ms.length){if(passed)return otFinal(b);return otSearch(b,3-p,depth,al,be,true)}
+  ms.sort((x,y)=>OW[y]-OW[x]);
+  if(p===2){let v=-1e9;for(const m of ms){v=Math.max(v,otSearch(otApply(b,m,p),1,depth-1,al,be,false));al=Math.max(al,v);if(al>=be)break}return v}
+  let v=1e9;for(const m of ms){v=Math.min(v,otSearch(otApply(b,m,p),2,depth-1,al,be,false));be=Math.min(be,v);if(al>=be)break}return v;
+}
+function otCpu(b,level){
+  const ms=otMoves(b,2);if(!ms.length)return -1;
+  if(level==='easy'){
+    if(Math.random()<.35){let best=ms[0];for(const m of ms)if(otFlips(b,m,2).length>otFlips(b,best,2).length)best=m;return best}
+    return ms[ri(0,ms.length-1)];
+  }
+  const empties=b.filter(x=>!x).length;
+  const depth=level==='normal'?2:(empties<=9?empties:4);
+  let best=ms[0],bv=-1e9;
+  for(const m of shuffle(ms.slice())){
+    let v=otSearch(otApply(b,m,2),1,depth-1,-1e9,1e9,false);
+    if(level==='normal')v+=rnd(-12,12);
+    if(v>bv){bv=v;best=m}
+  }
+  return best;
+}
+
+/* ---------- オセロ 画面（複数対局の途中保存に対応） ---------- */
+Save.ready.then(()=>{
+const store=makeStore('');
+const OT={id:null,created:0,st:null,busy:false,pick:store.get('otLv','normal'),cells:[],gen:0};
+(function(){const board=$('#ot-board');
+  for(let i=0;i<64;i++){const b=document.createElement('button');b.type='button';b.className='oc';b.id='ot-c'+i;b.setAttribute('aria-label',`${'abcdefgh'[i&7]}${(i>>3)+1}`);
+    b.innerHTML='<span class="disc"></span>';b.addEventListener('click',()=>otPlayer(i));OT.cells.push(b);board.appendChild(b)}
+  segInit($('#ot-lv'),OT.pick,v=>{OT.pick=v;store.set('otLv',v)});
+  $('#ot-new').addEventListener('click',()=>{otSave();otNew(OT.pick);toast('前の対局は「一覧」に残っています')});
+  $('#ot-list').addEventListener('click',()=>{otSave();openSaveList({game:'othello',currentId:OT.id,
+    onOpen:rec=>otOpen(rec),onRestart:rec=>otRestart(rec),onNew:()=>otNew(OT.pick),newLabel:`新しい対局（${LV_JA[OT.pick]}）`,
+    onDeleteCurrent:()=>{OT.id=null;OT.st=null;otStart()}})});
+  $('#ot-undo').addEventListener('click',()=>{const s=OT.st;if(!s||OT.busy||!s.hist.length)return;const h=s.hist.pop();s.b=h.b;s.last=h.last;s.turn=1;s.over=false;s.msg='1手戻しました';otSave();otRender(null)});
+})();
+function otInit(level){const b=new Array(64).fill(0);b[27]=2;b[28]=1;b[35]=1;b[36]=2;return {b,turn:1,level,last:-1,over:false,hist:[],msg:'あなたは黒・先手です'}}
+function otNew(level){OT.gen++;OT.id=Save.newId('othello');OT.created=Date.now();OT.st=otInit(level);OT.busy=false;otSave();otRender(null)}
+function otOpen(rec){OT.gen++;OT.id=rec.id;OT.created=rec.created;OT.st=rec.data;OT.busy=false;otRender(null);otResume()}
+function otRestart(rec){OT.gen++;OT.id=rec.id;OT.created=rec.created;OT.st=otInit(rec.data.level);OT.busy=false;otSave();otRender(null)}
+function otSave(){if(!OT.st||!OT.id)return;const m=Save.describe('othello',OT.st);
+  Save.putPuzzle({id:OT.id,game:'othello',...m,time:0,status:OT.st.over?'clear':'play',created:OT.created,data:OT.st});
+  Save.touch({game:'othello',id:OT.id,title:m.title})}
+function otPlayer(i){const s=OT.st;if(!s||OT.busy||s.over||s.turn!==1)return;
+  const f=otFlips(s.b,i,1);if(!f.length)return;
+  s.hist.push({b:s.b.slice(),last:s.last});if(s.hist.length>60)s.hist.shift();
+  s.b=otApply(s.b,i,1);s.last=i;s.msg='';Sfx.play('place');otRender(f);otNext(1)}
+function otNext(just){const s=OT.st;const o=3-just;
+  if(otMoves(s.b,o).length)s.turn=o;
+  else if(otMoves(s.b,just).length){s.turn=just;s.msg=o===2?'CPUはパス。続けてどうぞ':'あなたは置ける場所がないのでパス'}
+  else{otEnd();return}
+  otSave();otRender(null);
+  if(s.turn===2){OT.busy=true;const g=OT.gen;setTimeout(()=>{if(g===OT.gen)otCpuTurn();else OT.busy=false},520)}}
+function otCpuTurn(){const s=OT.st;if(!s){OT.busy=false;return}
+  const m=otCpu(s.b,s.level);OT.busy=false;if(m<0){otNext(2);return}
+  const f=otFlips(s.b,m,2);s.b=otApply(s.b,m,2);s.last=m;Sfx.play('tap');otRender(f);otNext(2)}
+function otEnd(){const s=OT.st;s.over=true;s.turn=0;let nb=0,nw=0;for(const x of s.b){if(x===1)nb++;else if(x===2)nw++}
+  const rec=store.get('otRec',{});const r=rec[s.level]||{w:0,l:0,d:0};
+  if(nb>nw){r.w++;s.msg=`勝ち！ ${nb}対${nw}`;Sfx.play('clear')}else if(nb<nw){r.l++;s.msg=`負け… ${nb}対${nw}`;Sfx.play('lose')}else{r.d++;s.msg=`引き分け ${nb}対${nw}`}
+  rec[s.level]=r;store.set('otRec',rec);s.hist=[];otSave();otRender(null)}
+function otRender(flipped){const s=OT.st;if(!s)return;
+  const hints=s.turn===1&&!OT.busy?new Set(otMoves(s.b,1)):new Set();
+  let nb=0,nw=0;
+  for(let i=0;i<64;i++){const c=OT.cells[i],d=c.firstChild,v=s.b[i];if(v===1)nb++;else if(v===2)nw++;
+    c.className='oc'+(hints.has(i)?' hint':'')+(i===s.last?' last':'');
+    d.className='disc'+(v===1?' b':v===2?' w':'');
+    if(flipped&&flipped.includes(i)){void d.offsetWidth;d.classList.add('flip')}}
+  $('#ot-b').textContent=nb;$('#ot-w').textContent=nw;
+  const m=$('#ot-msg');m.className='msg'+(s.over?' win':'');
+  m.textContent=s.msg||(s.over?'':s.turn===1?'あなたの番（光る点に置けます）':'CPUが考えています…');
+  const rec=(store.get('otRec',{})[s.level])||{w:0,l:0,d:0};
+  $('#ot-rec').textContent=`${LV_JA[s.level]} ${rec.w}勝${rec.l}敗`;
+  $('#ot-undo').disabled=!s.hist.length||OT.busy}
+function otResume(){if(OT.st&&OT.st.turn===2&&!OT.st.over&&!OT.busy){OT.busy=true;const g=OT.gen;setTimeout(()=>{if(g===OT.gen)otCpuTurn();else OT.busy=false},400)}}
+async function otStart(){
+  const id=getParam('id');
+  if(id){const r=await Save.getPuzzle(id);if(r&&r.game==='othello'){otOpen(r);return}}
+  const list=await Save.listPuzzles('othello');const r=list&&list.find(x=>x.status!=='clear');
+  if(r)otOpen(r);else otNew(OT.pick);
+}
+window.addEventListener('pagehide',otSave);
+otStart();
+});
+
+</script>
+<script>regSW('../sw.js')</script>
+</body>
+</html>

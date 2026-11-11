@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ナンプレ｜すきま脳トレ箱</title>
+<meta name="theme-color" content="#EBF0F6">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icons/icon-192.png">
+<link rel="apple-touch-icon" href="../icons/icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap">
+<link rel="stylesheet" href="../common/base.css">
+<style>
+/* sudoku */
+.sd-board{width:min(100%,calc(100vh - 330px));width:min(100%,calc(100dvh - 330px));min-width:250px;aspect-ratio:1;max-width:100%;
+  display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);gap:2px;background:var(--ink);border:2px solid var(--ink);border-radius:6px;overflow:hidden}
+.box{display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);gap:1px;background:var(--line)}
+.cell{background:var(--card);border:0;padding:0;display:grid;place-items:center;font-weight:700;font-size:clamp(16px,5.4vw,26px);color:var(--pencil);min-width:0;min-height:0}
+.cell.given{color:var(--ink);font-weight:900}
+.cell.peer{background:var(--peer)}
+.cell.same{background:var(--same)}
+.cell.sel{background:var(--mark);color:var(--markInk)}
+.cell.err{color:var(--pen);background:var(--penBg)}
+.cell.sel.err{background:var(--mark)}
+.memo{display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);width:100%;height:100%;font-size:clamp(8px,2.1vw,11px);font-weight:500;color:var(--ink2)}
+.memo span{display:grid;place-items:center;line-height:1}
+.nums{display:grid;grid-template-columns:repeat(9,1fr);gap:4px}
+.nums button{border:1.5px solid var(--ink);background:var(--card);border-radius:8px;padding:6px 0 3px;display:flex;flex-direction:column;align-items:center;font-size:21px;font-weight:900;line-height:1}
+.nums button small{font-size:9.5px;font-weight:500;color:var(--ink2);margin-top:3px}
+.nums button.full{opacity:.3}
+.tools{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.tools .btn{padding:9px 4px}
+</style>
+</head>
+<body>
+<div id="app">
+  <section class="view" id="v-sudoku">
+    <header class="bar"><a class="back" href="../index.html">‹ 戻る</a><h2>ナンプレ</h2><button class="btn" id="sd-list" type="button">一覧</button><span class="timer" id="sd-time">00:00</span></header>
+    <div class="opts">
+      <div class="seg" id="sd-diff" role="group" aria-label="難しさ">
+        <button type="button" data-v="easy">かんたん</button><button type="button" data-v="normal">ふつう</button><button type="button" data-v="hard">むずかしい</button>
+      </div>
+      <button class="btn primary" id="sd-new" type="button">新しい問題</button>
+    </div>
+    <div class="stage"><div class="sd-board" id="sd-board"></div></div>
+    <p class="msg" id="sd-msg"></p>
+    <div class="under">
+      <div class="nums" id="sd-nums"></div>
+      <div class="tools">
+        <button class="btn" id="sd-undo" type="button">戻す</button>
+        <button class="btn" id="sd-erase" type="button">消す</button>
+        <button class="btn" id="sd-memo" type="button" aria-pressed="false">メモ</button>
+        <button class="btn" id="sd-hint" type="button">ヒント</button>
+      </div>
+    </div>
+  </section>
+</div>
+<div id="layer"></div>
+<script src="../common/save.js"></script>
+<script src="../common/ui.js"></script>
+<script src="../common/sfx.js"></script>
+<script>
+/* ===================== SUDOKU logic ===================== */
+const popc=m=>{let c=0;while(m){m&=m-1;c++}return c};
+function sdSolve(g,limit,randomize){
+  const row=new Array(9).fill(0),col=new Array(9).fill(0),box=new Array(9).fill(0);
+  for(let i=0;i<81;i++)if(g[i]){const r=(i/9)|0,c=i%9,b=((r/3)|0)*3+((c/3)|0),m=1<<g[i];
+    if((row[r]|col[c]|box[b])&m)return 0;row[r]|=m;col[c]|=m;box[b]|=m}
+  let count=0;
+  (function rec(){
+    let best=-1,bm=0,bn=10;
+    for(let i=0;i<81;i++)if(!g[i]){const r=(i/9)|0,c=i%9,b=((r/3)|0)*3+((c/3)|0);
+      const m=~(row[r]|col[c]|box[b])&0x3FE,n=popc(m);if(n<bn){bn=n;best=i;bm=m;if(n<=1)break}}
+    if(best<0){count++;return count>=limit}
+    if(bn===0)return false;
+    const r=(best/9)|0,c=best%9,b=((r/3)|0)*3+((c/3)|0);
+    const ds=[];for(let d=1;d<=9;d++)if(bm&(1<<d))ds.push(d);
+    if(randomize)shuffle(ds);
+    for(const d of ds){const m=1<<d;g[best]=d;row[r]|=m;col[c]|=m;box[b]|=m;
+      const stop=rec();
+      if(stop)return true;
+      g[best]=0;row[r]&=~m;col[c]&=~m;box[b]&=~m}
+    return false;
+  })();
+  return count;
+}
+function sdGenerate(diff){
+  const g=new Array(81).fill(0);
+  sdSolve(g,1,true); // g is now a full grid
+  const sol=g.slice();
+  const target={easy:40,normal:32,hard:25}[diff]||32;
+  let clues=81;
+  for(const i of shuffle([...Array(81).keys()])){
+    if(clues<=target)break;
+    const b=g[i];g[i]=0;
+    if(sdSolve(g.slice(),2,false)===1)clues--;else g[i]=b;
+  }
+  return {puzzle:g,sol};
+}
+
+/* ---------- ナンプレ 画面（複数問題の途中保存に対応） ---------- */
+Save.ready.then(()=>{
+const store=makeStore('');
+const SD={id:null,created:0,st:null,memo:false,pick:store.get('sdDiff','normal'),cells:[],clock:makeClock($('#sd-time'))};
+(function(){
+  const board=$('#sd-board');
+  for(let bx=0;bx<9;bx++){const box=document.createElement('div');box.className='box';
+    for(let k=0;k<9;k++){const r=((bx/3)|0)*3+((k/3)|0),c=(bx%3)*3+k%3,i=r*9+c;
+      const b=document.createElement('button');b.type='button';b.className='cell';b.id='sd-c'+i;b.setAttribute('aria-label',`${r+1}行${c+1}列`);
+      b.addEventListener('click',()=>{if(!SD.st)return;SD.st.sel=i;sdRender()});SD.cells[i]=b;box.appendChild(b)}
+    board.appendChild(box)}
+  const nums=$('#sd-nums');
+  for(let d=1;d<=9;d++){const b=document.createElement('button');b.type='button';b.id='sd-n'+d;b.innerHTML=`${d}<small></small>`;b.addEventListener('click',()=>sdInput(d));nums.appendChild(b)}
+  segInit($('#sd-diff'),SD.pick,v=>{SD.pick=v;store.set('sdDiff',v)});
+  $('#sd-new').addEventListener('click',()=>{sdLeave();sdNew(SD.pick);toast('前の問題は「一覧」に残っています')});
+  $('#sd-list').addEventListener('click',()=>{sdSave();openSaveList({game:'sudoku',currentId:SD.id,
+    onOpen:rec=>{sdLeave();sdOpen(rec)},onRestart:rec=>{sdLeave();sdRestart(rec)},onNew:()=>{sdLeave();sdNew(SD.pick)},newLabel:`新しい問題（${DIFF_JA[SD.pick]}）`,
+    onDeleteCurrent:()=>{SD.id=null;SD.st=null;sdStart()}})});
+  $('#sd-undo').addEventListener('click',()=>{const s=SD.st;if(!s||s.done||!s.hist.length)return;const h=s.hist.pop();s.cur=h[0];s.memo=h[1];sdSave();sdRender()});
+  $('#sd-erase').addEventListener('click',()=>{const s=SD.st;if(!s||s.done||s.sel<0||s.puzzle[s.sel])return;if(!s.cur[s.sel]&&!s.memo[s.sel])return;sdPush();s.cur[s.sel]=0;s.memo[s.sel]=0;sdSave();sdRender()});
+  $('#sd-memo').addEventListener('click',()=>{SD.memo=!SD.memo;$('#sd-memo').setAttribute('aria-pressed',String(SD.memo))});
+  $('#sd-hint').addEventListener('click',()=>{const s=SD.st;if(!s||s.done)return;
+    let i=s.sel;if(i<0||s.cur[i]===s.sol[i]){i=s.cur.findIndex((v,j)=>v!==s.sol[j]);if(i<0)return}
+    sdPush();s.cur[i]=s.sol[i];s.memo[i]=0;s.hints++;s.sel=i;sdClearPeers(i,s.sol[i]);sdAfter()});
+  document.addEventListener('keydown',e=>{if(!SD.st||document.getElementById('layer').innerHTML)return;const s=SD.st;
+    if(e.key>='1'&&e.key<='9'){sdInput(+e.key);e.preventDefault()}
+    else if(e.key==='Backspace'||e.key==='Delete'||e.key==='0')$('#sd-erase').click();
+    else if(e.key.startsWith('Arrow')){if(s.sel<0)s.sel=0;else{let r=(s.sel/9)|0,c=s.sel%9;
+      if(e.key==='ArrowUp')r=(r+8)%9;if(e.key==='ArrowDown')r=(r+1)%9;if(e.key==='ArrowLeft')c=(c+8)%9;if(e.key==='ArrowRight')c=(c+1)%9;s.sel=r*9+c}
+      sdRender();e.preventDefault()}});
+})();
+function sdPush(){const s=SD.st;s.hist.push([s.cur.slice(),s.memo.slice()]);if(s.hist.length>200)s.hist.shift()}
+function sdPeers(i,j){const r1=(i/9)|0,c1=i%9,r2=(j/9)|0,c2=j%9;return r1===r2||c1===c2||(((r1/3)|0)===((r2/3)|0)&&((c1/3)|0)===((c2/3)|0))}
+function sdClearPeers(i,d){const s=SD.st;for(let j=0;j<81;j++)if(j!==i&&sdPeers(i,j))s.memo[j]&=~(1<<d)}
+function sdInput(d){const s=SD.st;if(!s||s.done||s.sel<0||s.puzzle[s.sel])return;
+  if(SD.memo){if(s.cur[s.sel])return;sdPush();s.memo[s.sel]^=1<<d;Sfx.play('tap')}
+  else{if(s.cur[s.sel]===d)return;sdPush();s.cur[s.sel]=d;s.memo[s.sel]=0;
+    if(d!==s.sol[s.sel]){s.mistakes++;Sfx.play('ng')}else{sdClearPeers(s.sel,d);Sfx.play('place')}}
+  sdAfter()}
+function sdAfter(){const s=SD.st;
+  if(s.cur.every((v,i)=>v===s.sol[i])){s.done=true;SD.clock.stop();const t=Math.floor(SD.clock.get());
+    const best=store.get('sdBest',{});const prev=best[s.diff];s.newBest=!s.hints&&(prev==null||t<prev);
+    if(s.newBest){best[s.diff]=t;store.set('sdBest',best)}Sfx.play('clear')}
+  sdSave();sdRender()}
+function sdSave(){if(!SD.st||!SD.id)return;SD.st.time=SD.clock.get();const m=Save.describe('sudoku',SD.st);
+  Save.putPuzzle({id:SD.id,game:'sudoku',...m,time:SD.st.time,status:SD.st.done?'clear':'play',created:SD.created,data:SD.st});
+  Save.touch({game:'sudoku',id:SD.id,title:m.title})}
+function sdNew(diff){const {puzzle,sol}=sdGenerate(diff);
+  SD.id=Save.newId('sudoku');SD.created=Date.now();
+  SD.st={diff,puzzle,sol,cur:puzzle.slice(),memo:new Array(81).fill(0),sel:-1,mistakes:0,hints:0,done:false,hist:[],time:0};
+  SD.clock.stop();SD.clock.set(0);SD.clock.run();sdSave();sdRender()}
+function sdOpen(rec){SD.id=rec.id;SD.created=rec.created;SD.st=rec.data;SD.st.hist=SD.st.hist||[];SD.clock.stop();SD.clock.set(SD.st.time||0);if(!SD.st.done)SD.clock.run();sdRender()}
+function sdRestart(rec){const d=rec.data;SD.id=rec.id;SD.created=rec.created;
+  SD.st={...d,cur:d.puzzle.slice(),memo:new Array(81).fill(0),sel:-1,mistakes:0,hints:0,done:false,hist:[],time:0,newBest:false};
+  SD.clock.stop();SD.clock.set(0);SD.clock.run();sdSave();sdRender()}
+function sdRender(){const s=SD.st;if(!s)return;
+  const sv=s.sel>=0?s.cur[s.sel]:0;
+  for(let i=0;i<81;i++){const b=SD.cells[i],v=s.cur[i];
+    let cls='cell';if(s.puzzle[i])cls+=' given';
+    if(i===s.sel)cls+=' sel';else if(sv&&v===sv)cls+=' same';else if(s.sel>=0&&sdPeers(i,s.sel))cls+=' peer';
+    if(v&&v!==s.sol[i])cls+=' err';
+    b.className=cls;
+    if(v)b.textContent=v;
+    else if(s.memo[i]){let h='<span class="memo">';for(let d=1;d<=9;d++)h+=`<span>${s.memo[i]&(1<<d)?d:''}</span>`;b.innerHTML=h+'</span>'}
+    else b.textContent=''}
+  for(let d=1;d<=9;d++){let c=0;for(let i=0;i<81;i++)if(s.cur[i]===d&&s.sol[i]===d)c++;
+    const b=$('#sd-n'+d);b.classList.toggle('full',c>=9);b.querySelector('small').textContent=c>=9?'✓':9-c}
+  const m=$('#sd-msg');
+  if(s.done){m.className='msg win';m.textContent=`クリア！ ${fmt(s.time)}`+(s.newBest?'　ベスト更新':s.hints?`　（ヒント${s.hints}回）`:'')}
+  else{m.className='msg'+(s.mistakes?' warn':'');m.textContent=`${DIFF_JA[s.diff]}・ミス ${s.mistakes}`+(s.hints?`・ヒント ${s.hints}`:'')}
+}
+async function sdStart(){
+  const id=getParam('id');
+  if(id){const r=await Save.getPuzzle(id);if(r&&r.game==='sudoku'){sdOpen(r);return}}
+  const list=await Save.listPuzzles('sudoku');const r=list&&list.find(x=>x.status!=='clear');
+  if(r)sdOpen(r);else sdNew(SD.pick);
+}
+function sdLeave(){SD.clock.stop();sdSave()}
+document.addEventListener('visibilitychange',()=>{if(document.hidden)sdLeave();else if(SD.st&&!SD.st.done)SD.clock.run()});
+window.addEventListener('pagehide',sdLeave);
+sdStart();
+});
+
+</script>
+<script>regSW('../sw.js')</script>
+</body>
+</html>
