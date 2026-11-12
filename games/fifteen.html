@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>15パズル｜すきま脳トレ箱</title>
+<meta name="theme-color" content="#EBF0F6">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icons/icon-192.png">
+<link rel="apple-touch-icon" href="../icons/icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap">
+<link rel="stylesheet" href="../common/base.css">
+<style>
+.ft-wrap{flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
+.ft-board{position:relative;width:min(100%,calc(100dvh - 300px));min-width:240px;max-width:100%;aspect-ratio:1;background:var(--ink);border-radius:14px;padding:6px;box-shadow:4px 4px 0 var(--mark)}
+.ft-in{position:relative;width:100%;height:100%}
+.tile{position:absolute;border:0;border-radius:10px;background:var(--card);color:var(--ink);font:400 clamp(18px,7vw,34px) var(--display);display:grid;place-items:center;
+  transition:transform .12s ease;box-shadow:inset 0 -4px 0 var(--line);padding:0}
+.tile.ok{background:var(--mark);color:var(--markInk);box-shadow:inset 0 -4px 0 rgba(0,0,0,.15)}
+.ft-stats{display:flex;justify-content:center;gap:18px;font-weight:700;font-size:14px;font-variant-numeric:tabular-nums}
+.ft-stats b{font:400 20px var(--display)}
+</style>
+</head>
+<body>
+<div id="app">
+<section class="view">
+  <header class="bar"><a class="back" href="../index.html">‹ 戻る</a><h2>15パズル</h2><span class="timer" id="ft-time">00:00</span></header>
+  <div class="opts">
+    <div class="seg" id="ft-size" role="group" aria-label="大きさ"><button type="button" data-v="3">3×3</button><button type="button" data-v="4">4×4</button><button type="button" data-v="5">5×5</button></div>
+    <button class="btn primary" id="ft-new" type="button">シャッフル</button>
+  </div>
+  <div class="ft-stats"><span>手数 <b id="ft-moves">0</b></span><span id="ft-best"></span></div>
+  <div class="ft-wrap"><div class="ft-board"><div class="ft-in" id="ft-in"></div></div></div>
+  <p class="msg" id="ft-msg">空いた所のとなり（同じ列なら離れていても）をタップして動かす</p>
+  <div style="height:12px"></div>
+</section>
+</div>
+<div id="layer"></div>
+<script src="../common/save.js"></script>
+<script src="../common/ui.js"></script>
+<script src="../common/sfx.js"></script>
+<script>
+Save.ready.then(()=>{
+const store=makeStore('ft_');
+let n=+store.get('size',4),T=null,clock=makeClock($('#ft-time')),tiles=[];
+segInit($('#ft-size'),n,v=>{n=+v;store.set('size',n);start(true)});
+function solved(a){for(let i=0;i<a.length-1;i++)if(a[i]!==i+1)return false;return true}
+function shuffleBoard(){const a=[...Array(n*n)].map((_,i)=>(i+1)%(n*n));let e=n*n-1,prev=-1;
+  for(let k=0;k<n*n*40;k++){const r=(e/n)|0,c=e%n,opts=[];if(r>0)opts.push(e-n);if(r<n-1)opts.push(e+n);if(c>0)opts.push(e-1);if(c<n-1)opts.push(e+1);
+    const cand=opts.filter(o=>o!==prev),o=cand[Math.random()*cand.length|0];a[e]=a[o];a[o]=0;prev=e;e=o}
+  return solved(a)?shuffleBoard():a}
+function start(fresh){
+  const saved=!fresh&&store.get('cur_'+n,null);
+  T=saved&&!saved.done?saved:{n,a:shuffleBoard(),moves:0,time:0,done:false};
+  clock.stop();clock.set(T.time);build();render();$('#ft-msg').className='msg';$('#ft-msg').textContent='空いた所と同じ列・行の数字をタップして動かす';
+}
+function build(){const box=$('#ft-in');box.innerHTML='';tiles=[];
+  for(let v=1;v<n*n;v++){const b=document.createElement('button');b.type='button';b.className='tile';b.textContent=v;b.dataset.v=v;
+    b.style.width=`calc(${100/n}% - 6px)`;b.style.height=`calc(${100/n}% - 6px)`;b.style.left='3px';b.style.top='3px';
+    b.addEventListener('pointerdown',e=>{e.preventDefault();tap(v)});box.appendChild(b);tiles[v]=b}}
+function render(){const a=T.a;for(let i=0;i<a.length;i++){const v=a[i];if(!v)continue;const t=tiles[v];
+  t.style.transform=`translate(${(i%n)*100}%,${((i/n)|0)*100}%) translate(${(i%n)*6}px,${((i/n)|0)*6}px)`;t.classList.toggle('ok',v===i+1)}
+  $('#ft-moves').textContent=T.moves;const b=store.get('best',{})[n];$('#ft-best').textContent=b?`ベスト ${b.moves}手・${fmt(b.time)}`:''}
+function tap(v){if(T.done)return;const a=T.a,i=a.indexOf(v),e=a.indexOf(0),r=(i/n)|0,c=i%n,er=(e/n)|0,ec=e%n;
+  if(r!==er&&c!==ec){Sfx.play('ng');return}
+  const step=r===er?(c<ec?-1:1):(r<er?-n:n);let k=e;
+  while(k!==i){const nx=k+step;a[k]=a[nx];a[nx]=0;k=nx;T.moves++}
+  Sfx.play('tap');if(!clock.running())clock.run();
+  if(solved(a)){T.done=true;clock.stop();T.time=clock.get();const best=store.get('best',{}),b=best[n];
+    const nb=!b||T.moves<b.moves||(T.moves===b.moves&&T.time<b.time);
+    const bt=store.get('bestTime',{});const ntb=bt[n]==null||T.time<bt[n];if(ntb){bt[n]=Math.floor(T.time);store.set('bestTime',bt)}
+    if(nb){best[n]={moves:T.moves,time:Math.floor(T.time)};store.set('best',best)}
+    store.set('count',(store.get('count',0)||0)+1);Sfx.play('clear');
+    $('#ft-msg').className='msg win';$('#ft-msg').textContent=`そろった！ ${T.moves}手・${fmt(T.time)}${nb?'　ベスト更新！':ntb?'　最速タイム！':''}`}
+  T.time=clock.get();store.set('cur_'+n,T);render()}
+$('#ft-new').onclick=()=>start(true);
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&T){clock.stop();T.time=clock.get();store.set('cur_'+n,T)}});
+Save.touch({game:'fifteen'});start(false);
+});
+</script>
+<script>regSW('../sw.js')</script>
+</body>
+</html>

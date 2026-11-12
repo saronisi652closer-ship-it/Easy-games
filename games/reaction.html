@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>反射神経テスト｜すきま脳トレ箱</title>
+<meta name="theme-color" content="#EBF0F6">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icons/icon-192.png">
+<link rel="apple-touch-icon" href="../icons/icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap">
+<link rel="stylesheet" href="../common/base.css">
+<style>
+.rx-pad{flex:1;min-height:0;margin-bottom:12px;border:2.5px solid var(--ink);border-radius:18px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;
+  text-align:center;padding:16px;user-select:none;-webkit-user-select:none;touch-action:manipulation;cursor:pointer;background:var(--card);color:var(--ink);transition:background .08s}
+.rx-pad.wait{background:#C8433A;color:#fff;border-color:#7A1E18}
+.rx-pad.go{background:#2B9A5A;color:#fff;border-color:#155E33}
+.rx-pad.fly{background:#F2C23A;color:#18264A}
+.rx-pad h3{font:400 clamp(26px,9vw,44px) var(--display);margin:0}
+.rx-pad p{margin:0;font-weight:700;font-size:15px;line-height:1.6}
+.rx-pad .big{font:400 clamp(40px,14vw,64px) var(--display);font-variant-numeric:tabular-nums}
+.rx-dots{display:flex;gap:8px;justify-content:center}
+.rx-dots i{width:44px;padding:4px 0;border-radius:8px;border:1.5px solid var(--line);font:700 12px var(--body);font-style:normal;text-align:center;font-variant-numeric:tabular-nums;background:var(--card);color:var(--ink2)}
+.rx-dots i.on{border-color:var(--ink);color:var(--ink)}
+.rx-best{display:flex;justify-content:center;gap:16px;font-size:13px;font-weight:700;color:var(--ink2);font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body>
+<div id="app">
+<section class="view">
+  <header class="bar"><a class="back" href="../index.html">‹ 戻る</a><h2>反射神経テスト</h2></header>
+  <div class="rx-best"><span id="rx-b1">ベスト 1回 ---</span><span id="rx-b5">ベスト 5回平均 ---</span></div>
+  <div class="rx-dots" id="rx-dots" style="margin:10px 0"></div>
+  <div class="rx-pad" id="rx-pad" role="button" tabindex="0"></div>
+</section>
+</div>
+<div id="layer"></div>
+<script src="../common/save.js"></script>
+<script src="../common/ui.js"></script>
+<script src="../common/sfx.js"></script>
+<script>
+Save.ready.then(()=>{
+const store=makeStore('rx_');
+const pad=$('#rx-pad');let st='idle',res=[],t0=0,timer=null,flies=0;
+function bests(){const b1=store.get('best1',null),b5=store.get('best5',null);$('#rx-b1').textContent='ベスト 1回 '+(b1?b1+'ms':'---');$('#rx-b5').textContent='ベスト 5回平均 '+(b5?b5+'ms':'---')}
+function dots(){$('#rx-dots').innerHTML=[0,1,2,3,4].map(i=>`<i class="${i<res.length?'on':''}">${res[i]!=null?res[i]:i+1+'回目'}</i>`).join('')}
+function show(cls,html){pad.className='rx-pad '+cls;pad.innerHTML=html}
+function idle(){st='idle';show('',`<h3>反射神経テスト</h3><p>画面が<b>赤</b>から<b>緑</b>に変わったら、すぐタップ！<br>5回の平均で記録します。</p><p class="note">赤いうちに押すとフライング</p><p style="color:var(--pen)">タップでスタート</p>`);dots()}
+function wait(){st='wait';show('wait','<h3>まだ…</h3><p>緑になったらタップ</p>');clearTimeout(timer);timer=setTimeout(go,1200+Math.random()*2800)}
+function go(){st='go';t0=performance.now();show('go','<h3>タップ！</h3>')}
+function hit(){
+  if(st==='idle'){res=[];flies=0;dots();wait();return}
+  if(st==='wait'){clearTimeout(timer);flies++;st='fly';Sfx.play('ng');show('fly','<h3>フライング！</h3><p>緑になるまで待ってね。<br>タップでこの回をやり直し</p>');return}
+  if(st==='fly'){wait();return}
+  if(st==='go'){const ms=Math.round(performance.now()-t0);res.push(ms);dots();Sfx.play('ok');
+    const b1=store.get('best1',null);let nb1=false;if(!b1||ms<b1){store.set('best1',ms);nb1=true}
+    if(res.length<5){st='between';show('',`<div class="big">${ms}<small style="font-size:.4em">ms</small></div><p>${nb1?'1回のベスト更新！':''}${ms<200?'すごい速さ！':ms<300?'いい反応！':'もう少し速く！'}</p><p style="color:var(--pen)">タップで次へ（${res.length}/5）</p>`)}
+    else{const avg=Math.round(res.reduce((a,b)=>a+b)/5);const b5=store.get('best5',null);const nb=!b5||avg<b5;if(nb)store.set('best5',avg);
+      const hist=store.get('hist',[]);hist.unshift({avg,at:Date.now()});store.set('hist',hist.slice(0,30));
+      st='done';Sfx.play(nb?'clear':'coin');
+      show('',`<p>5回の平均</p><div class="big">${avg}<small style="font-size:.4em">ms</small></div><p>${nb?'ベスト更新！':''}フライング ${flies}回<br>${avg<230?'ネコ並みの反射神経！':avg<280?'かなり速い！':avg<350?'ふつうの速さ':'もうひと息'}</p><p style="color:var(--pen)">タップでもう一度</p>`)}
+    bests();return}
+  if(st==='between'){wait();return}
+  if(st==='done'){idle();return}
+}
+pad.addEventListener('pointerdown',e=>{e.preventDefault();hit()});
+document.addEventListener('keydown',e=>{if(e.code==='Space'||e.key==='Enter'){e.preventDefault();hit()}});
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&(st==='wait'||st==='go')){clearTimeout(timer);idle()}});
+Save.touch({game:'reaction'});bests();idle();
+});
+</script>
+<script>regSW('../sw.js')</script>
+</body>
+</html>
