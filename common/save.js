@@ -6,7 +6,7 @@
 (function(){
 'use strict';
 const DB_NAME='sukima-box',DB_VER=1,OLD='sukima_',FB='sukima2_';
-const GAME_NAMES={sudoku:'ナンプレ',othello:'オセロ',slither:'スリザーリンク',picross:'ピクロス',runner:'坂道チャリ',ito:'糸通し',machigai:'間違い探し',ikusei:'ドット育成',cardbattle:'カードバトル',punch:'エビワラージャンケン',fifteen:'15パズル',reaction:'反射神経テスト',memory:'神経衰弱',mines:'マインスイーパー',mole:'もぐらたたき',snake:'ヘビゲーム',breakout:'ブロック崩し',batting:'バッティング',penguin:'ペンギン飛ばし'};
+const GAME_NAMES={sudoku:'ナンプレ',othello:'オセロ',slither:'スリザーリンク',picross:'ピクロス',runner:'坂道チャリ',ito:'糸通し',machigai:'間違い探し',ikusei:'ドット育成',cardbattle:'カードバトル',punch:'エビワラージャンケン',fifteen:'15パズル',reaction:'反射神経テスト',memory:'神経衰弱',mines:'マインスイーパー',mole:'もぐらたたき',snake:'ヘビゲーム',breakout:'ブロック崩し',batting:'バッティング',penguin:'ペンギン飛ばし',tama:'色玉連鎖',iraira:'イライラ棒',trap:'棒人間トラップ'};
 const kv=new Map();
 let db=null,backend='idb',writable=false,chain=Promise.resolve(),failCount=0;
 const listeners=[];
