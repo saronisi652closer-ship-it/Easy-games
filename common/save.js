@@ -6,7 +6,7 @@
 (function(){
 'use strict';
 const DB_NAME='sukima-box',DB_VER=1,OLD='sukima_',FB='sukima2_';
-const GAME_NAMES={sudoku:'ナンプレ',othello:'オセロ',slither:'スリザーリンク',picross:'ピクロス',runner:'坂道チャリ',ito:'糸通し',machigai:'間違い探し',ikusei:'ドット育成',cardbattle:'カードバトル',punch:'エビワラージャンケン',fifteen:'15パズル',reaction:'反射神経テスト',memory:'神経衰弱',mines:'マインスイーパー',mole:'もぐらたたき',snake:'ヘビゲーム',breakout:'ブロック崩し',batting:'バッティング',penguin:'ペンギン飛ばし',tama:'色玉連鎖',iraira:'イライラ棒',trap:'棒人間トラップ'};
+const GAME_NAMES={sudoku:'ナンプレ',othello:'オセロ',slither:'スリザーリンク',picross:'ピクロス',runner:'坂道チャリ',ito:'糸通し',machigai:'間違い探し',ikusei:'ドット育成',cardbattle:'カードバトル',punch:'エビワラージャンケン',fifteen:'15パズル',reaction:'反射神経テスト',memory:'神経衰弱',mines:'マインスイーパー',mole:'もぐらたたき',snake:'ヘビゲーム',breakout:'ブロック崩し',batting:'バッティング',penguin:'ペンギン飛ばし',tama:'色玉連鎖',iraira:'イライラ棒',trap:'棒人間トラップ',bomber:'ボンバー迷路',escape:'ミニ脱出',fort:'ミニ要塞'};
 const kv=new Map();
 let db=null,backend='idb',writable=false,chain=Promise.resolve(),failCount=0;
 const listeners=[];
@@ -60,7 +60,7 @@ function describe(game,d){
     if(game==='othello'){const n=d.b.filter(Boolean).length;return {title:'オセロ '+(LV[d.level]||''),diff:LV[d.level]||'',progress:(n-4)/60}}
     if(game==='mines'){const safe=d.w*d.h-d.n;const op=d.open.reduce((a,b)=>a+b,0);const L={easy:'初級',normal:'中級',hard:'上級'}[d.lv]||'';return {title:'マインスイーパー '+L,diff:L,progress:d.lost?op/safe:op/safe}}
     if(game==='picross'){let need=0,ok=0;for(let y=0;y<d.sol.length;y++)for(let x=0;x<d.sol[0].length;x++)if(d.sol[y][x]){need++;if(d.marks[y][x]===1)ok++}
-      const sz=`${d.sol[0].length}×${d.sol.length}`;return {title:(d.kind==='pic'?'ピクロス 絵の問題 ':'ピクロス 自動生成 ')+sz,diff:sz,progress:need?ok/need:0}}
+      const sz=`${d.sol[0].length}×${d.sol.length}`;return {title:(d.kind==='animal'?'ピクロス 動物シリーズ ':d.kind==='pic'?'ピクロス 絵の問題 ':'ピクロス 自動生成 ')+sz,diff:sz,progress:need?ok/need:0}}
   }catch(e){}
   return {title:GAME_NAMES[game]||game,diff:'',progress:0};
 }
