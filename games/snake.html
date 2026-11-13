@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ヘビゲーム｜すきま脳トレ箱</title>
+<meta name="theme-color" content="#EBF0F6">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icons/icon-192.png">
+<link rel="apple-touch-icon" href="../icons/icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap">
+<link rel="stylesheet" href="../common/base.css">
+<style>
+.sn-hud{display:flex;justify-content:space-between;align-items:baseline;font-weight:700;font-size:13px;font-variant-numeric:tabular-nums;padding:0 2px 8px}
+.sn-hud b{font:400 22px var(--display)}
+.sn-wrap{flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
+.sn-box{position:relative;width:min(100%,calc(100dvh - 330px));min-width:240px;max-width:100%;aspect-ratio:1;border:2.5px solid var(--ink);border-radius:12px;overflow:hidden;background:#CFE6A8}
+.sn-box canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none}
+.sn-over{position:absolute;inset:0;background:rgba(24,38,74,.55);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center;padding:14px}
+.sn-over h3{font:400 26px var(--display);margin:0}.sn-over p{margin:0;font-weight:700;line-height:1.6}.sn-over .big{font:400 42px var(--display)}
+.pad{display:grid;grid-template-columns:repeat(3,56px);grid-template-rows:repeat(2,46px);gap:6px;justify-content:center;padding:10px 0 14px}
+.pad button{border:2px solid var(--ink);background:var(--card);border-radius:12px;font-size:20px;box-shadow:0 3px 0 var(--ink)}
+.pad button:active{transform:translateY(3px);box-shadow:none}
+.pad .u{grid-column:2}.pad .l{grid-column:1;grid-row:2}.pad .d{grid-column:2;grid-row:2}.pad .r{grid-column:3;grid-row:2}
+</style>
+</head>
+<body>
+<div id="app">
+<section class="view">
+  <header class="bar"><a class="back" href="../index.html">‹ 戻る</a><h2>ヘビゲーム</h2><button class="btn" id="sn-pause" type="button">一時停止</button><span class="timer" id="sn-best">ベスト 0</span></header>
+  <div class="opts"><div class="seg" id="sn-sp" role="group" aria-label="速さ"><button type="button" data-v="slow">ゆっくり</button><button type="button" data-v="normal">ふつう</button><button type="button" data-v="fast">はやい</button></div></div>
+  <div class="sn-hud"><span>長さ <b id="sn-len">3</b></span><span>点数 <b id="sn-score">0</b></span></div>
+  <div class="sn-wrap"><div class="sn-box" id="sn-box"><canvas id="sn-cv"></canvas></div></div>
+  <div class="pad"><button class="u" type="button" data-d="0,-1" aria-label="上">▲</button><button class="l" type="button" data-d="-1,0" aria-label="左">◀</button><button class="d" type="button" data-d="0,1" aria-label="下">▼</button><button class="r" type="button" data-d="1,0" aria-label="右">▶</button></div>
+</section>
+</div>
+<div id="layer"></div>
+<script src="../common/save.js"></script>
+<script src="../common/ui.js"></script>
+<script src="../common/sfx.js"></script>
+<script>
+Save.ready.then(()=>{
+const store=makeStore('sn_');
+const N=17,SPD={slow:6.5,normal:9.5,fast:13},cv=$('#sn-cv'),ctx=cv.getContext('2d');
+let sp=store.get('speed','normal'),S=null,raf=0,last=0,acc=0,state='title',best=store.get('best',{});
+segInit($('#sn-sp'),sp,v=>{sp=v;store.set('speed',v);if(state!=='play'){showBest();title()}});
+function showBest(){$('#sn-best').textContent=`ベスト ${best[sp]||0}`}
+function size(){const r=cv.getBoundingClientRect(),d=window.devicePixelRatio||1;cv.width=r.width*d;cv.height=r.height*d;ctx.setTransform(d,0,0,d,0,0);draw()}
+function freeCell(){for(;;){const p={x:Math.random()*N|0,y:Math.random()*N|0};if(!S.body.some(b=>b.x===p.x&&b.y===p.y)&&!(S.gold&&S.gold.x===p.x&&S.gold.y===p.y))return p}}
+function reset(){S={body:[{x:6,y:8},{x:5,y:8},{x:4,y:8}],dir:{x:1,y:0},q:[],grow:0,score:0,eaten:0,gold:null,goldUntil:0};S.food=freeCell()}
+function overlay(html,cb){$('#sn-box').querySelectorAll('.sn-over').forEach(o=>o.remove());if(!html)return;const o=document.createElement('div');o.className='sn-over';o.innerHTML=html;$('#sn-box').appendChild(o);if(cb)setTimeout(()=>o.onclick=cb,300)}
+function title(){state='title';reset();draw();overlay(`<h3>ヘビゲーム</h3><p>えさを食べて長くなろう<br>壁と自分の体にぶつかったら終わり</p><p>スワイプ・十字ボタン・矢印キーで操作</p><p>ベスト ${best[sp]||0}点</p><p style="color:#FFE58A">タップでスタート</p>`,start)}
+function start(){reset();overlay(null);state='play';last=performance.now();acc=0;cancelAnimationFrame(raf);raf=requestAnimationFrame(loop);hud();Sfx.play('ok')}
+function turn(dx,dy){if(state!=='play')return;const q=S.q,ld=q.length?q[q.length-1]:S.dir;if(ld.x===-dx&&ld.y===-dy)return;if(ld.x===dx&&ld.y===dy)return;if(q.length<3)q.push({x:dx,y:dy})}
+function step(now){if(S.q.length)S.dir=S.q.shift();const h=S.body[0],nh={x:h.x+S.dir.x,y:h.y+S.dir.y};
+  if(nh.x<0||nh.y<0||nh.x>=N||nh.y>=N)return die();
+  const tailMoving=!S.grow;const body=tailMoving?S.body.slice(0,-1):S.body;if(body.some(b=>b.x===nh.x&&b.y===nh.y))return die();
+  S.body.unshift(nh);if(S.grow)S.grow--;else S.body.pop();
+  if(nh.x===S.food.x&&nh.y===S.food.y){S.grow+=1;S.score+=1;S.eaten++;Sfx.play('coin');S.food=freeCell();if(S.eaten%5===0&&!S.gold){S.gold=freeCell();S.goldUntil=now+5000}}
+  if(S.gold&&nh.x===S.gold.x&&nh.y===S.gold.y){S.grow+=3;S.score+=5;S.gold=null;Sfx.play('clear')}
+  if(S.gold&&now>S.goldUntil)S.gold=null;hud()}
+function hud(){$('#sn-len').textContent=S.body.length;$('#sn-score').textContent=S.score}
+function die(){state='over';Sfx.play('hit');const nb=S.score>(best[sp]||0);if(nb){best[sp]=S.score;store.set('best',best)}showBest();draw();
+  overlay(`<h3>ゲームオーバー</h3><div class="big">${S.score}点</div><p>${nb?'ベスト更新！<br>':''}長さ ${S.body.length}</p><p style="color:#FFE58A">タップでもう一回</p>`,start)}
+function loop(now){if(state!=='play')return;const rate=SPD[sp]+Math.min(4,S.eaten*.08);acc+=(now-last)/1000;last=now;
+  while(acc>=1/rate&&state==='play'){acc-=1/rate;step(now)}draw();raf=requestAnimationFrame(loop)}
+function draw(){const w=cv.clientWidth,c=w/N;if(!w||!S)return;ctx.fillStyle='#CFE6A8';ctx.fillRect(0,0,w,w);
+  ctx.fillStyle='#C2DC98';for(let y=0;y<N;y++)for(let x=0;x<N;x++)if((x+y)%2)ctx.fillRect(x*c,y*c,c,c);
+  const dot=(p,col,r)=>{ctx.fillStyle=col;ctx.beginPath();ctx.arc(p.x*c+c/2,p.y*c+c/2,c*r,0,7);ctx.fill()};
+  dot(S.food,'#D2433A',.38);ctx.fillStyle='#3F7A3A';ctx.fillRect(S.food.x*c+c*.45,S.food.y*c+c*.05,c*.12,c*.22);
+  if(S.gold){dot(S.gold,'#F2C23A',.42);ctx.strokeStyle='#C99A00';ctx.lineWidth=2;ctx.beginPath();ctx.arc(S.gold.x*c+c/2,S.gold.y*c+c/2,c*.42,0,7);ctx.stroke()}
+  S.body.forEach((b,i)=>{const t=i/Math.max(1,S.body.length-1);ctx.fillStyle=`hsl(${210-t*30},55%,${32+t*18}%)`;const m=i?c*.1:c*.04;ctx.beginPath();ctx.roundRect(b.x*c+m,b.y*c+m,c-2*m,c-2*m,c*.3);ctx.fill()});
+  const h=S.body[0],ex=S.dir.y?c*.18:0,ey=S.dir.x?c*.18:0,cx=h.x*c+c/2+S.dir.x*c*.15,cy=h.y*c+c/2+S.dir.y*c*.15;
+  ctx.fillStyle='#fff';for(const s of[-1,1]){ctx.beginPath();ctx.arc(cx+ex*s,cy+ey*s,c*.13,0,7);ctx.fill()}ctx.fillStyle='#18264A';for(const s of[-1,1]){ctx.beginPath();ctx.arc(cx+ex*s+S.dir.x*c*.04,cy+ey*s+S.dir.y*c*.04,c*.06,0,7);ctx.fill()}}
+let sw=null;
+cv.addEventListener('pointerdown',e=>{e.preventDefault();sw={x:e.clientX,y:e.clientY}});
+cv.addEventListener('pointermove',e=>{if(!sw)return;const dx=e.clientX-sw.x,dy=e.clientY-sw.y;if(Math.hypot(dx,dy)<22)return;
+  if(Math.abs(dx)>Math.abs(dy))turn(Math.sign(dx),0);else turn(0,Math.sign(dy));sw={x:e.clientX,y:e.clientY}});
+cv.addEventListener('pointerup',()=>sw=null);cv.addEventListener('pointercancel',()=>sw=null);
+document.querySelector('.pad').addEventListener('pointerdown',e=>{const b=e.target.closest('[data-d]');if(!b)return;e.preventDefault();const [x,y]=b.dataset.d.split(',').map(Number);turn(x,y)});
+document.addEventListener('keydown',e=>{const m={ArrowUp:[0,-1],ArrowDown:[0,1],ArrowLeft:[-1,0],ArrowRight:[1,0],w:[0,-1],s:[0,1],a:[-1,0],d:[1,0]}[e.key];if(m){e.preventDefault();turn(...m)}
+  if(e.code==='Space'){e.preventDefault();if(state==='title'||state==='over')start();else pause()}});
+function pause(){if(state==='play'){state='paused';cancelAnimationFrame(raf);overlay('<h3>一時停止中</h3><p style="color:#FFE58A">タップで再開</p>',()=>{overlay(null);state='play';last=performance.now();raf=requestAnimationFrame(loop)})}}
+$('#sn-pause').onclick=pause;
+document.addEventListener('visibilitychange',()=>{if(document.hidden)pause()});
+new ResizeObserver(size).observe($('#sn-box'));
+showBest();Save.touch({game:'snake'});reset();size();title();
+});
+</script>
+<script>regSW('../sw.js')</script>
+</body>
+</html>

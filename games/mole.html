@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>もぐらたたき｜すきま脳トレ箱</title>
+<meta name="theme-color" content="#EBF0F6">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icons/icon-192.png">
+<link rel="apple-touch-icon" href="../icons/icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap">
+<link rel="stylesheet" href="../common/base.css">
+<style>
+.ml-hud{display:flex;justify-content:space-between;align-items:baseline;font-weight:700;font-size:13px;font-variant-numeric:tabular-nums;padding:2px 2px 8px}
+.ml-hud b{font:400 24px var(--display)}
+.ml-hud .cb{color:var(--pen)}
+.ml-field{position:relative;flex:1;min-height:0;margin-bottom:12px;border:2.5px solid var(--ink);border-radius:18px;overflow:hidden;
+  background:linear-gradient(#BFE3A0,#8CC46E);display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);padding:4% 3% 2%;gap:2% 3%;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+.hole{position:relative;overflow:hidden;border:0;padding:0;background:none}
+.hole::after{content:"";position:absolute;left:8%;right:8%;bottom:6%;height:26%;border-radius:50%;background:#4A3426;box-shadow:inset 0 6px 0 #2E2018;z-index:0}
+.hole .m{position:absolute;left:18%;right:18%;bottom:12%;height:78%;transform:translateY(100%);transition:transform .12s ease-out;z-index:1;clip-path:inset(0 0 0 0)}
+.hole.up .m{transform:translateY(0)}
+.hole.hit .m{transform:translateY(25%) scale(.92)}
+.hole .m svg{width:100%;height:100%;display:block}
+.hole .front{position:absolute;left:4%;right:4%;bottom:0;height:16%;background:#8CC46E;z-index:2;border-radius:0 0 50% 50%/0 0 100% 100%}
+.pop{position:absolute;z-index:5;font:400 20px var(--display);pointer-events:none;animation:up .7s ease-out forwards;text-shadow:0 2px 0 #fff}
+@keyframes up{0%{opacity:0;transform:translateY(6px)}20%{opacity:1}100%{opacity:0;transform:translateY(-26px)}}
+.ml-over{position:absolute;inset:0;z-index:8;background:rgba(24,38,74,.55);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center;padding:16px}
+.ml-over h3{font:400 28px var(--display);margin:0}
+.ml-over p{margin:0;font-weight:700;line-height:1.6}
+.ml-over .big{font:400 46px var(--display)}
+.ml-legend{display:flex;justify-content:center;gap:12px;font-size:11.5px;color:var(--ink2);font-weight:700;padding-bottom:4px}
+</style>
+</head>
+<body>
+<div id="app">
+<section class="view">
+  <header class="bar"><a class="back" href="../index.html">‹ 戻る</a><h2>もぐらたたき</h2><span class="timer" id="ml-best">ベスト 0</span></header>
+  <div class="ml-hud"><span>のこり <b id="ml-time">30</b>秒</span><span class="cb" id="ml-combo"></span><span>点数 <b id="ml-score">0</b></span></div>
+  <div class="ml-legend"><span>ふつう +10</span><span>金 +30</span><span>ヘルメット 2回</span><span>ばくだん −20</span></div>
+  <div class="ml-field" id="ml-field"></div>
+</section>
+</div>
+<div id="layer"></div>
+<script src="../common/save.js"></script>
+<script src="../common/ui.js"></script>
+<script src="../common/sfx.js"></script>
+<script>
+Save.ready.then(()=>{
+const store=makeStore('ml_');
+const F=$('#ml-field');let holes=[],G=null,raf=0,best=store.get('best',0);
+const C={b:'#8A6A52',bl:'#B8957A',g:'#F2C23A',gl:'#FFE58A'};
+function moleSVG(kind){
+  if(kind==='bomb')return `<svg viewBox="0 0 100 100"><circle cx="50" cy="60" r="34" fill="#2B2B33" stroke="#111" stroke-width="3"/><circle cx="38" cy="48" r="8" fill="rgba(255,255,255,.3)"/><rect x="42" y="18" width="16" height="12" rx="3" fill="#6A6E78"/><path d="M50 18q6-12 16-10" stroke="#8A5A36" stroke-width="4" fill="none"/><circle cx="68" cy="8" r="6" fill="#F2C23A"/><circle cx="68" cy="8" r="3" fill="#E8483A"/><path d="M36 64l8 6M44 64l-8 6M56 64l8 6M64 64l-8 6" stroke="#F2C23A" stroke-width="3"/></svg>`;
+  const body=kind==='gold'?C.g:C.b,belly=kind==='gold'?C.gl:C.bl;
+  return `<svg viewBox="0 0 100 100"><path d="M10 100V50a40 40 0 0 1 80 0v50z" fill="${body}" stroke="#2B2B33" stroke-width="3"/>
+  <ellipse cx="50" cy="78" rx="24" ry="22" fill="${belly}"/>
+  <circle cx="36" cy="44" r="6" fill="#2B2B33"/><circle cx="64" cy="44" r="6" fill="#2B2B33"/><circle cx="38" cy="42" r="2" fill="#fff"/><circle cx="66" cy="42" r="2" fill="#fff"/>
+  <ellipse cx="50" cy="56" rx="9" ry="7" fill="#EE8FB3" stroke="#2B2B33" stroke-width="2"/><path d="M44 64q6 5 12 0" stroke="#2B2B33" stroke-width="2.5" fill="none"/>
+  <path d="M32 58l-14-2M32 62l-14 3M68 58l14-2M68 62l14 3" stroke="#2B2B33" stroke-width="1.8"/>
+  ${kind==='helmet'?'<path d="M14 40a36 30 0 0 1 72 0z" fill="#E07B39" stroke="#2B2B33" stroke-width="3"/><rect x="10" y="38" width="80" height="7" rx="3" fill="#C25A2A" stroke="#2B2B33" stroke-width="2"/>':''}
+  ${kind==='gold'?'<path d="M20 22l6 6M80 22l-6 6M50 6v9" stroke="#F2C23A" stroke-width="4" stroke-linecap="round"/>':''}</svg>`}
+function build(){F.innerHTML='';holes=[];for(let i=0;i<9;i++){const h=document.createElement('button');h.type='button';h.className='hole';h.innerHTML='<span class="m"></span><span class="front"></span>';
+  h.addEventListener('pointerdown',e=>{e.preventDefault();whack(i,e)});F.appendChild(h);holes.push({el:h,m:h.firstChild,up:false,kind:null,until:0,hp:0})}}
+function overlay(html){const o=document.createElement('div');o.className='ml-over';o.innerHTML=html;F.appendChild(o);return o}
+function title(){F.querySelectorAll('.ml-over').forEach(o=>o.remove());overlay(`<h3>もぐらたたき</h3><p>30秒で、出てきたモグラをたたこう<br>続けて当てるとコンボで点が増える<br>ばくだんはたたかないで！</p><p>ベスト ${best}点</p><p style="color:#FFE58A">タップでスタート</p>`).onclick=startGame}
+function startGame(){F.querySelectorAll('.ml-over').forEach(o=>o.remove());G={t0:performance.now(),len:30000,score:0,combo:0,maxc:0,next:0,hits:0,miss:0,over:false};
+  holes.forEach(h=>{h.up=false;h.el.classList.remove('up','hit')});cancelAnimationFrame(raf);raf=requestAnimationFrame(loop);Sfx.play('ok')}
+function spawn(now,el){const free=holes.filter(h=>!h.up);if(!free.length)return;const h=free[Math.random()*free.length|0];
+  const p=el/G.len,r=Math.random();h.kind=r<.1?'gold':r<.24?'bomb':r<.36?'helmet':'mole';h.hp=h.kind==='helmet'?2:1;
+  const stay=(h.kind==='gold'?600:1150)-p*450+Math.random()*250;h.until=now+stay;h.up=true;h.m.innerHTML=moleSVG(h.kind);h.el.classList.remove('hit');h.el.classList.add('up')}
+function loop(now){if(!G||G.over)return;const el=now-G.t0,left=Math.max(0,G.len-el);
+  $('#ml-time').textContent=Math.ceil(left/1000);
+  for(const h of holes)if(h.up&&now>h.until){h.up=false;h.el.classList.remove('up');if(h.kind!=='bomb'&&h.hp>0){G.combo=0;hud()}}
+  if(now>=G.next){spawn(now,el);if(Math.random()<.15+el/G.len*.35)spawn(now,el);G.next=now+(720-el/G.len*380)*(.7+Math.random()*.6)}
+  if(left<=0)return end();raf=requestAnimationFrame(loop)}
+function popText(e,t,col){const r=F.getBoundingClientRect(),p=document.createElement('div');p.className='pop';p.textContent=t;p.style.color=col;p.style.left=(e.clientX-r.left-16)+'px';p.style.top=(e.clientY-r.top-30)+'px';F.appendChild(p);setTimeout(()=>p.remove(),700)}
+function whack(i,e){if(!G||G.over)return;const h=holes[i];
+  if(!h.up){if(h.el.classList.contains('up'))return;G.combo=0;G.miss++;hud();return}
+  if(h.kind==='bomb'){G.score=Math.max(0,G.score-20);G.combo=0;h.up=false;h.el.classList.remove('up');Sfx.play('hit');popText(e,'−20','#D2433A');hud();return}
+  h.hp--;Sfx.play('punch');
+  if(h.hp>0){popText(e,'カン！','#E07B39');h.el.classList.add('hit');setTimeout(()=>h.el.classList.remove('hit'),120);return}
+  G.combo++;G.maxc=Math.max(G.maxc,G.combo);G.hits++;const mult=1+Math.floor(G.combo/5)*.5;const base=h.kind==='gold'?30:h.kind==='helmet'?20:10;const pts=Math.round(base*mult);
+  G.score+=pts;popText(e,'+'+pts,h.kind==='gold'?'#C99A00':'#18264A');if(h.kind==='gold')Sfx.play('coin');
+  h.el.classList.add('hit');h.up=false;setTimeout(()=>h.el.classList.remove('up','hit'),110);hud()}
+function hud(){$('#ml-score').textContent=G.score;$('#ml-combo').textContent=G.combo>=2?`${G.combo}コンボ${G.combo>=5?` ×${1+Math.floor(G.combo/5)*.5}`:''}`:''}
+function end(){G.over=true;holes.forEach(h=>{h.up=false;h.el.classList.remove('up')});const nb=G.score>best;if(nb){best=G.score;store.set('best',best)}
+  store.set('plays',(store.get('plays',0)||0)+1);Sfx.play(nb?'clear':'ok');$('#ml-best').textContent=`ベスト ${best}`;
+  const o=overlay(`<h3>しゅうりょう！</h3><div class="big">${G.score}点</div><p>${nb?'ベスト更新！<br>':''}たたいた数 ${G.hits}・最大 ${G.maxc}コンボ・空振り ${G.miss}</p><p style="color:#FFE58A">タップでもう一回</p>`);
+  setTimeout(()=>o.onclick=startGame,600)}
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&G&&!G.over){G.over=true;cancelAnimationFrame(raf);title()}});
+$('#ml-best').textContent=`ベスト ${best}`;Save.touch({game:'mole'});build();title();
+});
+</script>
+<script>regSW('../sw.js')</script>
+</body>
+</html>

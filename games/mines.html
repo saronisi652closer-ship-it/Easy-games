@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>マインスイーパー｜すきま脳トレ箱</title>
+<meta name="theme-color" content="#EBF0F6">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icons/icon-192.png">
+<link rel="apple-touch-icon" href="../icons/icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap">
+<link rel="stylesheet" href="../common/base.css">
+<style>
+.mn-top{display:flex;justify-content:center;gap:16px;font-weight:700;font-size:14px;font-variant-numeric:tabular-nums;padding-bottom:6px;align-items:center}
+.mn-top b{font:400 20px var(--display)}
+.mn-stage{flex:1;min-height:0;overflow:auto;display:flex;align-items:safe center;justify-content:safe center}
+.mn-grid{display:grid;gap:2px;background:var(--line);border:2px solid var(--ink);border-radius:8px;padding:2px;margin:auto;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+.mc{border:0;padding:0;border-radius:4px;background:linear-gradient(var(--card),var(--peer));box-shadow:inset 0 -2px 0 var(--line);font:900 var(--fs,15px)/1 var(--body);display:grid;place-items:center;color:var(--ink)}
+.mc.o{background:var(--paper);box-shadow:none}
+.mc.f::after{content:"🚩";font-size:.9em}
+.mc.boom{background:var(--pen)}
+.mc.mine::after{content:"●";color:var(--ink)}
+.mc.boom::after{color:#fff}
+.mc.wrong::after{content:"×";color:var(--pen)}
+.n1{color:#2F63D3}.n2{color:#2B8A57}.n3{color:#D2433A}.n4{color:#5A3FA8}.n5{color:#A8432F}.n6{color:#1F8A8A}.n7{color:#18264A}.n8{color:#6A6E78}
+.mn-tools{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:8px 0 14px}
+.mn-tools .btn{padding:11px 4px;font-size:14px}
+</style>
+</head>
+<body>
+<div id="app">
+<section class="view">
+  <header class="bar"><a class="back" href="../index.html">‹ 戻る</a><h2>マインスイーパー</h2><button class="btn" id="mn-list" type="button">一覧</button><span class="timer" id="mn-time">00:00</span></header>
+  <div class="opts">
+    <div class="seg" id="mn-lv" role="group" aria-label="難しさ"><button type="button" data-v="easy">初級</button><button type="button" data-v="normal">中級</button><button type="button" data-v="hard">上級</button></div>
+    <button class="btn primary" id="mn-new" type="button">新しい盤面</button>
+  </div>
+  <div class="mn-top"><span>残り地雷 <b id="mn-left">0</b></span><span id="mn-best"></span></div>
+  <div class="mn-stage" id="mn-stage"><div class="mn-grid" id="mn-grid"></div></div>
+  <p class="msg" id="mn-msg"></p>
+  <div class="mn-tools">
+    <button class="btn" id="mn-mode" type="button" aria-pressed="false">🚩 旗モード</button>
+    <button class="btn" id="mn-help" type="button">遊び方</button>
+  </div>
+</section>
+</div>
+<div id="layer"></div>
+<script src="../common/save.js"></script>
+<script src="../common/ui.js"></script>
+<script src="../common/sfx.js"></script>
+<script>
+Save.ready.then(()=>{
+const store=makeStore('mn_');
+const LVS={easy:{w:9,h:9,n:10,name:'初級'},normal:{w:12,h:14,n:28,name:'中級'},hard:{w:16,h:22,n:60,name:'上級'}};
+let lv=store.get('lv','easy'),M=null,id=null,created=0,flagMode=false,clock=makeClock($('#mn-time')),cells=[];
+segInit($('#mn-lv'),lv,v=>{lv=v;store.set('lv',v)});
+const nb=(i,w,h)=>{const x=i%w,y=(i/w)|0,o=[];for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){if(!dx&&!dy)continue;const xx=x+dx,yy=y+dy;if(xx>=0&&yy>=0&&xx<w&&yy<h)o.push(yy*w+xx)}return o};
+function fresh(l){const L=LVS[l];return {lv:l,w:L.w,h:L.h,n:L.n,mine:null,open:new Array(L.w*L.h).fill(0),flag:new Array(L.w*L.h).fill(0),done:false,lost:false,time:0}}
+function plant(first){const {w,h,n}=M,safe=new Set([first,...nb(first,w,h)]);const idx=shuffle([...Array(w*h).keys()].filter(i=>!safe.has(i)));M.mine=new Array(w*h).fill(0);idx.slice(0,n).forEach(i=>M.mine[i]=1)}
+const count=i=>nb(i,M.w,M.h).reduce((a,j)=>a+M.mine[j],0);
+function reveal(i){const st=[i];while(st.length){const k=st.pop();if(M.open[k]||M.flag[k])continue;M.open[k]=1;if(!M.mine[k]&&count(k)===0)for(const j of nb(k,M.w,M.h))if(!M.open[j])st.push(j)}}
+function act(i,flagging){
+  if(M.done)return;
+  if(flagging){if(M.open[i])return chord(i);M.flag[i]=M.flag[i]?0:1;Sfx.play('tap');return after()}
+  if(M.flag[i])return;
+  if(M.open[i])return chord(i);
+  if(!M.mine){plant(i);clock.run()}
+  if(M.mine[i]){M.open[i]=1;M.boom=i;return lose()}
+  reveal(i);Sfx.play('place');after()}
+function chord(i){if(!M.mine||!M.open[i])return;const ns=nb(i,M.w,M.h),f=ns.filter(j=>M.flag[j]).length;if(f!==count(i)||!f)return;
+  for(const j of ns)if(!M.flag[j]&&!M.open[j]){if(M.mine[j]){M.open[j]=1;M.boom=j;return lose()}reveal(j)}Sfx.play('place');after()}
+function lose(){M.done=true;M.lost=true;clock.stop();Sfx.play('hit');save();render();$('#mn-msg').className='msg warn';$('#mn-msg').textContent='ドカン！ 地雷を踏んでしまった（一覧から最初からやり直せます）'}
+function after(){
+  const safe=M.w*M.h-M.n,op=M.open.reduce((a,b)=>a+b,0);
+  if(M.mine&&op===safe&&!M.done){M.done=true;clock.stop();M.time=clock.get();M.mine.forEach((m,i)=>{if(m)M.flag[i]=1});
+    const best=store.get('best',{}),t=Math.floor(M.time),nbst=best[M.lv]==null||t<best[M.lv];if(nbst){best[M.lv]=t;store.set('best',best)}
+    store.set('count',(store.get('count',0)||0)+1);Sfx.play('clear');save();render();
+    $('#mn-msg').className='msg win';$('#mn-msg').textContent=`クリア！ ${fmt(t)}${nbst?'　ベスト更新！':''}`;return}
+  save();render()}
+function save(){if(!M||!id)return;M.time=clock.get();const m=Save.describe('mines',M);
+  if(M.lost)m.title+='（地雷を踏んだ）';Save.putPuzzle({id,game:'mines',...m,time:M.time,status:M.done&&!M.lost?'clear':'play',created,data:M});Save.touch({game:'mines',id,title:m.title})}
+function build(){const g=$('#mn-grid'),st=$('#mn-stage').getBoundingClientRect();
+  const cs=Math.max(19,Math.min(40,Math.floor((st.width-8)/M.w)-2,Math.floor((st.height-8)/M.h)-2));
+  g.style.gridTemplateColumns=`repeat(${M.w},${cs}px)`;g.style.gridAutoRows=cs+'px';g.style.setProperty('--fs',Math.round(cs*.55)+'px');
+  g.innerHTML='';cells=[];for(let i=0;i<M.w*M.h;i++){const b=document.createElement('button');b.type='button';b.className='mc';b.dataset.i=i;g.appendChild(b);cells.push(b)}}
+function render(){
+  for(let i=0;i<cells.length;i++){const c=cells[i];let cls='mc';
+    if(M.open[i]){cls+=' o';if(M.mine&&M.mine[i])cls+=i===M.boom?' boom mine':' mine';else{const k=count(i);c.textContent=k||'';if(k)cls+=' n'+k}}
+    else{c.textContent='';if(M.flag[i]){cls+=M.lost&&M.mine&&!M.mine[i]?' wrong':' f'}else if(M.lost&&M.mine&&M.mine[i])cls+=' o mine'}
+    c.className=cls}
+  $('#mn-left').textContent=M.n-M.flag.reduce((a,b)=>a+b,0);
+  const b=store.get('best',{})[M.lv];$('#mn-best').textContent=`${LVS[M.lv].name}　ベスト ${b!=null?fmt(b):'--:--'}`;
+  if(!M.done){$('#mn-msg').className='msg';$('#mn-msg').textContent=M.mine?(flagMode?'旗モード：タップで旗を立てる・外す':'タップで開く・長押しで旗'):'どこでもタップしてスタート（最初の1マスは安全）'}}
+function openRec(rec){id=rec.id;created=rec.created;M=rec.data;clock.stop();clock.set(M.time||0);if(M.mine&&!M.done)clock.run();build();render();
+  if(M.done){$('#mn-msg').className='msg '+(M.lost?'warn':'win');$('#mn-msg').textContent=M.lost?'この盤面は地雷を踏んで終わっています':'クリア済みの盤面です'}}
+function newBoard(){if(M)save();id=Save.newId('mines');created=Date.now();M=fresh(lv);clock.stop();clock.set(0);build();render();save()}
+let press=null;
+$('#mn-grid').addEventListener('pointerdown',e=>{const b=e.target.closest('.mc');if(!b)return;const i=+b.dataset.i;
+  press={i,t:setTimeout(()=>{press.long=true;navigator.vibrate?.(20);act(i,true)},380)}});
+const up=e=>{if(!press)return;clearTimeout(press.t);const p=press;press=null;if(p.long)return;const b=e.target.closest&&e.target.closest('.mc');if(!b||+b.dataset.i!==p.i)return;act(p.i,flagMode)};
+$('#mn-grid').addEventListener('pointerup',up);
+$('#mn-grid').addEventListener('pointercancel',()=>{if(press){clearTimeout(press.t);press=null}});
+$('#mn-grid').addEventListener('pointerleave',()=>{if(press){clearTimeout(press.t);press=null}});
+$('#mn-grid').addEventListener('contextmenu',e=>{e.preventDefault()});
+$('#mn-mode').onclick=()=>{flagMode=!flagMode;$('#mn-mode').setAttribute('aria-pressed',String(flagMode));render()};
+$('#mn-new').onclick=()=>{newBoard();toast('前の盤面は「一覧」に残っています')};
+$('#mn-list').onclick=()=>{save();openSaveList({game:'mines',currentId:id,onOpen:openRec,
+  onRestart:rec=>{const d=rec.data;openRec({...rec,data:{...d,open:d.open.map(()=>0),flag:d.flag.map(()=>0),done:false,lost:false,time:0,boom:undefined}});save()},
+  onNew:newBoard,newLabel:`新しい盤面（${LVS[lv].name}）`,onDeleteCurrent:()=>{id=null;M=null;start()}})};
+$('#mn-help').onclick=()=>{$('#layer').innerHTML=`<div class="scrim" id="hs"><div class="sheet"><h3>遊び方</h3>
+  <p>数字は、まわり8マスにある地雷の数です。地雷以外のマスを全部開けたらクリア。</p>
+  <p>・<b>タップ</b>で開く。<b>長押し</b>（または🚩旗モードでタップ）で旗を立てる<br>・開いた数字をタップすると、旗の数が合っていれば周りをまとめて開ける<br>・最初に開く1マスとその周りには、地雷はありません</p>
+  <button class="btn" type="button" style="padding:12px">閉じる</button></div></div>`;$('#hs').onclick=e=>{if(e.target.id==='hs'||e.target.closest('button'))$('#layer').innerHTML=''}};
+async function start(){const q=getParam('id');if(q){const r=await Save.getPuzzle(q);if(r&&r.game==='mines'){openRec(r);return}}
+  const list=await Save.listPuzzles('mines');const r=list&&list.find(x=>x.status!=='clear');if(r)openRec(r);else newBoard()}
+new ResizeObserver(()=>{if(M){build();render()}}).observe($('#mn-stage'));
+document.addEventListener('visibilitychange',()=>{if(document.hidden){clock.stop();save()}else if(M&&M.mine&&!M.done)clock.run()});
+window.addEventListener('pagehide',save);
+start();
+});
+</script>
+<script>regSW('../sw.js')</script>
+</body>
+</html>
