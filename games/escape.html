@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ミニ脱出｜すきま脳トレ箱</title>
+<meta name="theme-color" content="#EBF0F6">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icons/icon-192.png">
+<link rel="apple-touch-icon" href="../icons/icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap">
+<link rel="stylesheet" href="../common/base.css">
+<style>
+.es-hud{display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:13px;padding:0 2px 8px;gap:8px}
+.es-room{position:relative;border:2.5px solid var(--ink);border-radius:12px;overflow:hidden;background:#F3E6CF;aspect-ratio:6/5;width:100%;max-height:calc(100dvh - 330px)}
+.es-room svg{position:absolute;inset:0;width:100%;height:100%}
+.es-room [data-hs]{cursor:pointer}
+.es-nav{position:absolute;top:50%;transform:translateY(-50%);width:40px;height:56px;border:2px solid var(--ink);background:rgba(255,255,255,.85);border-radius:10px;font-size:20px;color:var(--ink);display:grid;place-items:center}
+.es-nav.l{left:6px}.es-nav.r{right:6px}
+.es-back{position:absolute;left:50%;bottom:8px;transform:translateX(-50%);border:2px solid var(--ink);background:rgba(255,255,255,.9);border-radius:10px;padding:6px 16px;font-weight:900;color:var(--ink)}
+.es-msg{min-height:44px;margin:10px 0 8px;padding:10px 12px;border:1.5px solid var(--ink);border-radius:10px;background:var(--card);font-weight:700;font-size:14px;line-height:1.5}
+.es-inv{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;padding-bottom:14px}
+.es-inv button{aspect-ratio:1;border:1.5px solid var(--line);background:var(--card);border-radius:10px;font-size:22px;display:grid;place-items:center;padding:0}
+.es-inv button.sel{border:2.5px solid var(--ink);background:var(--mark)}
+.es-inv button:disabled{opacity:.35}
+.es-over{position:absolute;inset:0;background:rgba(10,16,32,.66);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center;padding:16px}
+.es-over h3{font:400 24px var(--display);margin:0}.es-over p{margin:0;font-weight:700;line-height:1.6}.es-over .big{font:400 36px var(--display)}
+.es-over .row{display:flex;gap:8px}.es-over button{border:2px solid #fff;background:rgba(255,255,255,.15);color:#fff;border-radius:10px;padding:8px 14px;font-weight:900}
+</style>
+</head>
+<body>
+<div id="app">
+<section class="view">
+  <header class="bar"><a class="back" href="../index.html">‹ 戻る</a><h2>ミニ脱出</h2><button class="btn" id="es-hint" type="button">💡 ヒント</button><span class="timer" id="es-time">00:00</span></header>
+  <div class="es-hud"><span id="es-where">へや</span><span id="es-rec"></span></div>
+  <div class="es-room" id="es-room"></div>
+  <div class="es-msg" id="es-msg">気がつくと、知らない書斎にいた…</div>
+  <div class="es-inv" id="es-inv"></div>
+</section>
+</div>
+<div id="layer"></div>
+<script src="../common/save.js"></script>
+<script src="../common/ui.js"></script>
+<script src="../common/sfx.js"></script>
+<script>
+Save.ready.then(()=>{
+const store=makeStore('es_');
+const ITEMS={skey:{i:'🔑',n:'銀の鍵',d:'小さな銀色の鍵。'},light:{i:'🔦',n:'ライト',d:'小さな懐中電灯。暗いところを照らせる。'},memo:{i:'📜',n:'メモ',d:'「金庫の番号は 時計の中に」と書いてある。'},gkey:{i:'🗝️',n:'金の鍵',d:'ずっしり重い金色の鍵。'}};
+const WALLS=['ドアの壁','本棚の壁','机の壁','窓の壁'];
+let S=null,sel=null,view=0,zoom=null,tIv=0,tStart=0,dial=[0,0,0],books=[],best=store.get('best',null),clears=store.get('clears',0);
+function fresh(){return {f:{},inv:[],wall:0,time:0}}
+function save(){if(!S||S.done)return;S.time=elapsed();store.set('save',S)}
+function elapsed(){return S.time+(tStart?(performance.now()-tStart)/1000:0)}
+function clock(on){if(on&&!tStart){tStart=performance.now();tIv=setInterval(()=>$('#es-time').textContent=fmt(elapsed()),500)}if(!on&&tStart){S.time=elapsed();tStart=0;clearInterval(tIv)}$('#es-time').textContent=fmt(S?elapsed():0)}
+function msg(t){$('#es-msg').textContent=t}
+function give(k){if(!S.inv.includes(k)){S.inv.push(k);Sfx.play('coin');invDraw();save()}}
+function invDraw(){const b=$('#es-inv');b.innerHTML='';for(let i=0;i<6;i++){const k=S&&S.inv[i];const e=document.createElement('button');e.type='button';
+  if(k){e.textContent=ITEMS[k].i;e.setAttribute('aria-label',ITEMS[k].n);if(sel===k)e.classList.add('sel');e.onclick=()=>{sel=sel===k?null:k;msg(sel?`${ITEMS[k].n}：${ITEMS[k].d}（使う場所をタップ）`:'');invDraw()}}else e.disabled=true;b.appendChild(e)}}
+const has=k=>S.inv.includes(k),use=k=>sel===k;
+/* ---------- 絵（オリジナルの簡単なSVG） ---------- */
+const wallBG='<rect width="360" height="300" fill="#F3E6CF"/><rect y="230" width="360" height="70" fill="#C9A27A"/><rect y="228" width="360" height="6" fill="#A8794E"/>';
+function svgWall(n){const f=S.f;let g=wallBG;
+  if(n===0){g+=`<g data-hs="door"><rect x="125" y="70" width="110" height="160" rx="4" fill="${f.doorOpen?'#2B2B33':'#8A5A36'}" stroke="#5B3A22" stroke-width="4"/>${f.doorOpen?'<rect x="129" y="74" width="40" height="152" fill="#FFF1B8" opacity=".8"/>':'<rect x="140" y="85" width="80" height="55" rx="3" fill="#9C6B42"/><rect x="140" y="150" width="80" height="65" rx="3" fill="#9C6B42"/><circle cx="220" cy="155" r="6" fill="#F2C23A"/><rect x="217" y="164" width="6" height="10" fill="#2B2B33"/>'}</g>
+     <g data-hs="clock"><circle cx="62" cy="80" r="30" fill="#fff" stroke="#5B3A22" stroke-width="5"/>${[...Array(12)].map((_,i)=>`<circle cx="${62+Math.sin(i*Math.PI/6)*23}" cy="${80-Math.cos(i*Math.PI/6)*23}" r="1.8" fill="#5B3A22"/>`).join('')}<line x1="62" y1="80" x2="${62+Math.sin((3.25)*Math.PI/6)*14}" y2="${80-Math.cos((3.25)*Math.PI/6)*14}" stroke="#2B2B33" stroke-width="4" stroke-linecap="round"/><line x1="62" y1="80" x2="${62+Math.sin(15*Math.PI/30)*22}" y2="${80-Math.cos(15*Math.PI/30)*22}" stroke="#2B2B33" stroke-width="2.5" stroke-linecap="round"/></g>
+     <rect x="275" y="190" width="50" height="40" fill="#6E9B5A"/><rect x="270" y="186" width="60" height="8" rx="3" fill="#557A45"/>`}
+  if(n===1){g+=`<g data-hs="shelf"><rect x="70" y="40" width="220" height="190" fill="#8A5A36" stroke="#5B3A22" stroke-width="4"/>
+     ${[60,120,180].map(y=>`<rect x="78" y="${y+40}" width="204" height="6" fill="#5B3A22"/>`).join('')}
+     ${books.length||true?shelfBooks(78,48,0.9):''}<rect x="78" y="196" width="204" height="30" fill="#2B2018"/></g>
+     <g data-hs="painting"><rect x="300" y="60" width="50" height="40" fill="#fff" stroke="#C9A24A" stroke-width="4"/><path d="M304 95l14-18l10 10l8-6l10 14z" fill="#6E9B5A"/><circle cx="338" cy="72" r="5" fill="#F2C23A"/></g>`}
+  if(n===2){g+=`<g data-hs="desk"><rect x="40" y="140" width="190" height="14" fill="#9C6B42"/><rect x="50" y="154" width="12" height="76" fill="#8A5A36"/><rect x="208" y="154" width="12" height="76" fill="#8A5A36"/></g>
+     <g data-hs="drawer"><rect x="120" y="156" width="80" height="34" fill="${f.drawerOpen?'#6B4428':'#8A5A36'}" stroke="#5B3A22" stroke-width="3"/><rect x="152" y="168" width="16" height="8" rx="3" fill="#F2C23A"/>${f.drawerOpen?'':'<circle cx="160" cy="182" r="2.5" fill="#2B2B33"/>'}</g>
+     <rect x="80" y="110" width="40" height="30" fill="#4F86C6"/><rect x="84" y="114" width="32" height="20" fill="#CFE3F2"/><rect x="95" y="140" width="10" height="3" fill="#2B2B33"/>
+     <g data-hs="safe"><rect x="255" y="150" width="80" height="80" rx="6" fill="#5B6886" stroke="#2B2B33" stroke-width="4"/><circle cx="295" cy="190" r="16" fill="#9AA6B8" stroke="#2B2B33" stroke-width="3"/><rect x="${f.safeOpen?318:291}" y="184" width="8" height="12" fill="#2B2B33"/>${f.safeOpen?'<rect x="259" y="154" width="72" height="72" fill="#2B2B33" opacity=".7"/>':''}</g>
+     <g data-hs="lamp"><rect x="190" y="100" width="6" height="40" fill="#2B2B33"/><path d="M175 100h36l-8-24h-20z" fill="#F2C23A"/></g>`}
+  if(n===3){g+=`<g data-hs="window"><rect x="90" y="40" width="180" height="130" fill="#F7B267" stroke="#fff" stroke-width="8"/><rect x="176" y="40" width="8" height="130" fill="#fff"/><rect x="90" y="101" width="180" height="8" fill="#fff"/><circle cx="130" cy="140" r="20" fill="#F48C5A"/><path d="M220 70q6-6 12 0q6-6 12 0" fill="none" stroke="#5B3A22" stroke-width="2"/></g>
+     <rect x="70" y="30" width="30" height="160" fill="#D2433A" opacity=".85"/><rect x="260" y="30" width="30" height="160" fill="#D2433A" opacity=".85"/>
+     <g data-hs="pot"><rect x="125" y="84" width="115" height="146" fill="#000" opacity="0"/><path d="M140 230l8-46h64l8 46z" fill="#C4683E" stroke="#8A4A2A" stroke-width="3"/><rect x="144" y="178" width="72" height="10" fill="#6B4428"/>${S.f.potDug?'<circle cx="185" cy="180" r="5" fill="#4A2E1A"/>':''}<path d="M180 178q-30-40-8-80M180 178q20-50 40-70M180 178q-10-30-40-40" fill="none" stroke="#3F7A3A" stroke-width="5" stroke-linecap="round"/><ellipse cx="172" cy="100" rx="10" ry="16" fill="#4FA35A"/><ellipse cx="220" cy="108" rx="12" ry="16" fill="#4FA35A"/><ellipse cx="140" cy="138" rx="12" ry="9" fill="#4FA35A"/></g>`}
+  return `<svg viewBox="0 0 360 300" xmlns="http://www.w3.org/2000/svg">${g}</svg>`}
+const BOOK=[{c:'#D2433A',k:'red'},{c:'#4FA35A',k:'green'},{c:'#4F86C6',k:'blue'}];
+function shelfBooks(x0,y0){let g='';const cols=['#C9A24A','#7A6A5C','#D2433A','#9C6B42','#4FA35A','#E8D9B8','#4F86C6','#8A93A6'];
+  for(let r=0;r<3;r++){let xx=x0+6;for(let i=0;i<9;i++){const w=14+((i*7+r*3)%9);const h=40+((i*5+r)%14);const c=r===1&&i===2?'#D2433A':r===1&&i===5?'#4FA35A':r===1&&i===7?'#4F86C6':cols[(i+r*2)%cols.length];g+=`<rect x="${xx}" y="${y0+r*60+52-h}" width="${w}" height="${h}" fill="${c}" stroke="#2B2B33" stroke-width="1"/>`;xx+=w+2;if(xx>270)break}}return g}
+function svgShelf(){const f=S.f;let g='<rect width="360" height="300" fill="#8A5A36"/><rect x="20" y="20" width="320" height="170" fill="#5B3A22"/><rect x="20" y="190" width="320" height="10" fill="#3D2716"/>';
+  BOOK.forEach((b,i)=>{const pushed=books.includes(b.k);const x0=70+i*80;g+=`<g data-hs="book-${b.k}"><rect x="${x0}" y="${pushed?60:44}" width="50" height="${pushed?130:146}" fill="${b.c}" stroke="#2B2B33" stroke-width="3"/><rect x="${x0+8}" y="${pushed?80:64}" width="34" height="10" fill="rgba(255,255,255,.5)"/></g>`});
+  g+=`<g data-hs="gap"><rect x="20" y="210" width="320" height="70" fill="${f.lit?'#4A3A2A':'#151010'}"/>${f.lit?'<ellipse cx="180" cy="245" rx="120" ry="30" fill="rgba(255,240,170,.25)"/><text x="180" y="252" font-size="20" font-weight="900" text-anchor="middle" fill="#F3E6CF">あか → みどり → あお</text>':'<text x="180" y="250" font-size="12" text-anchor="middle" fill="#5B4A3A">（暗くて見えない）</text>'}</g>`;
+  if(f.comp)g+=`<g data-hs="comp"><rect x="290" y="30" width="40" height="40" fill="#2B2018" stroke="#C9A24A" stroke-width="3"/>${has('memo')?'':'<rect x="298" y="40" width="24" height="18" fill="#F3E6CF"/>'}</g>`;
+  return `<svg viewBox="0 0 360 300">${g}</svg>`}
+function svgSafe(){let g='<rect width="360" height="300" fill="#5B6886"/><rect x="40" y="30" width="280" height="230" rx="14" fill="#6E7B99" stroke="#2B2B33" stroke-width="5"/>';
+  if(S.f.safeOpen){g+=`<rect x="70" y="60" width="220" height="170" fill="#2B2B33"/>${has('gkey')?'':'<g data-hs="gk"><text x="180" y="160" font-size="48" text-anchor="middle">🗝️</text></g>'}`}
+  else{dial.forEach((v,i)=>{const cx=110+i*70;g+=`<g data-hs="dial-${i}"><rect x="${cx-28}" y="90" width="56" height="80" rx="10" fill="#E8EDF5" stroke="#2B2B33" stroke-width="3"/><text x="${cx}" y="148" font-size="44" font-weight="900" text-anchor="middle" fill="#18264A">${v}</text><text x="${cx}" y="112" font-size="14" text-anchor="middle" fill="#5B6886">▲</text></g>`});
+    g+='<g data-hs="open"><rect x="130" y="190" width="100" height="40" rx="10" fill="#F2C23A" stroke="#2B2B33" stroke-width="3"/><text x="180" y="217" font-size="18" font-weight="900" text-anchor="middle" fill="#2B2B33">あける</text></g>'}
+  return `<svg viewBox="0 0 360 300">${g}</svg>`}
+function svgClock(){let g='<rect width="360" height="300" fill="#F3E6CF"/><circle cx="180" cy="150" r="115" fill="#fff" stroke="#5B3A22" stroke-width="10"/>';
+  for(let i=1;i<=12;i++){g+=`<text x="${180+Math.sin(i*Math.PI/6)*90}" y="${158-Math.cos(i*Math.PI/6)*90}" font-size="22" font-weight="700" text-anchor="middle" fill="#5B3A22">${i}</text>`}
+  g+=`<line x1="180" y1="150" x2="${180+Math.sin(3.25*Math.PI/6)*55}" y2="${150-Math.cos(3.25*Math.PI/6)*55}" stroke="#2B2B33" stroke-width="10" stroke-linecap="round"/><line x1="180" y1="150" x2="${180+Math.sin(Math.PI/2)*85}" y2="150" stroke="#2B2B33" stroke-width="6" stroke-linecap="round"/><circle cx="180" cy="150" r="8" fill="#2B2B33"/>`;
+  return `<svg viewBox="0 0 360 300">${g}</svg>`}
+function draw(){const r=$('#es-room');let h='';
+  if(zoom==='shelf')h=svgShelf();else if(zoom==='safe')h=svgSafe();else if(zoom==='clock')h=svgClock();else h=svgWall(view);
+  h+=zoom?'<button class="es-back" type="button" data-nav="back">↩ もどる</button>':'<button class="es-nav l" type="button" data-nav="-1" aria-label="左の壁へ">◀</button><button class="es-nav r" type="button" data-nav="1" aria-label="右の壁へ">▶</button>';
+  r.innerHTML=h;$('#es-where').textContent=zoom==='shelf'?'本棚（近く）':zoom==='safe'?'金庫（近く）':zoom==='clock'?'時計（近く）':WALLS[view];}
+/* ---------- 調べる ---------- */
+function act(hs){const f=S.f;
+  switch(hs){
+  case 'door':if(f.doorOpen)return escape();if(use('gkey')){f.doorOpen=true;sel=null;S.inv=S.inv.filter(k=>k!=='gkey');Sfx.play('ok');msg('金の鍵がぴったり合った！ ドアが開いた');invDraw();draw();save();setTimeout(escape,900);return}
+    msg(sel?'それはドアには使えないみたい':'ドアには鍵がかかっている。金色の鍵穴だ');Sfx.play('tap');return;
+  case 'clock':zoom='clock';draw();msg('古い時計。針は止まっているようだ');return;
+  case 'painting':msg('山と太陽の小さな絵。裏には何もない');return;
+  case 'shelf':zoom='shelf';books=[];draw();msg(f.comp?'本棚。上のすみに小さな扉が開いている':'本棚。目立つ色の本が3冊ある。下のすき間は真っ暗だ');return;
+  case 'gap':if(f.lit){msg('すき間に「あか → みどり → あお」と書いてある');return}
+    if(use('light')){f.lit=true;draw();save();msg('ライトで照らすと文字が見えた！「あか → みどり → あお」');Sfx.play('coin');return}msg('暗くて何も見えない…照らすものがあれば');return;
+  case 'book-red':case 'book-green':case 'book-blue':{if(f.comp){msg('本はもう動かない');return}const k=hs.slice(5);if(books.includes(k))return;books.push(k);Sfx.play('place');draw();
+    const want=['red','green','blue'];if(books.length===3){if(books.every((b,i)=>b===want[i])){f.comp=true;Sfx.play('ok');msg('カチッ！ 本棚の上のすみの小さな扉が開いた');setTimeout(()=>{books=[];draw()},500);save()}else{msg('ガタン…本がもとに戻った');setTimeout(()=>{books=[];draw()},500)}}else msg('本を奥へ押しこんだ');return}
+  case 'comp':if(!has('memo')){give('memo');draw();msg('小さな扉の中にメモがあった。「金庫の番号は 時計の中に」')}else msg('中はもう空っぽだ');return;
+  case 'desk':msg('木の机。ラジオが置いてある');return;
+  case 'lamp':msg('スタンドライト。電球が切れている');return;
+  case 'drawer':if(f.drawerOpen){if(!has('light')){give('light');msg('引き出しの中にライトがあった！')}else msg('引き出しの中はもう空っぽだ');return}
+    if(use('skey')){f.drawerOpen=true;S.inv=S.inv.filter(k=>k!=='skey');sel=null;invDraw();give('light');draw();msg('銀の鍵で引き出しが開いた。ライトが入っていた！');return}
+    msg(sel?'それは使えないみたい':'引き出しには小さな鍵穴がある');Sfx.play('tap');return;
+  case 'safe':zoom='safe';draw();msg(f.safeOpen?'金庫の扉は開いている':'3けたの番号で開く金庫だ。数字をタップして合わせよう');return;
+  case 'dial-0':case 'dial-1':case 'dial-2':{const i=+hs.slice(5);dial[i]=(dial[i]+1)%10;Sfx.play('tap');draw();return}
+  case 'open':if(dial.join('')==='315'){f.safeOpen=true;Sfx.play('ok');draw();save();msg('ガチャン！ 金庫が開いた。中に何か光っている')}else{Sfx.play('ng');msg('……開かない。番号がちがうようだ')}return;
+  case 'gk':give('gkey');draw();msg('金の鍵を手に入れた！');return;
+  case 'window':msg('夕焼けの空。窓ははめ殺しで開かない');return;
+  case 'pot':if(!f.potDug){f.potDug=true;give('skey');draw();msg('鉢植えの土を少しほると…銀の鍵が出てきた！')}else msg('ふかふかの土の鉢植え');return;
+  }}
+function hint(){const f=S.f;let t;
+  if(!has('skey')&&!f.drawerOpen)t='窓の壁の植物を調べてみよう';else if(!f.drawerOpen)t='銀の鍵を選んで、机の引き出しをタップ';
+  else if(!f.lit)t='ライトを選んで、本棚の下の暗いすき間を照らそう';else if(!f.comp)t='本棚の3冊の本を、すき間の文字の順番に押してみよう';
+  else if(!has('memo')&&!f.safeOpen)t='本棚の上のすみに開いた小さな扉を見てみよう';else if(!f.safeOpen)t='ドアの壁の時計が指している時刻（3時15分）が金庫の番号だ';
+  else if(!has('gkey')&&!f.doorOpen)t='開いた金庫の中を調べよう';else t='金の鍵を選んで、ドアをタップ！';
+  S.hints=(S.hints||0)+1;save();msg('ヒント：'+t)}
+function escape(){if(S.done)return;S.done=true;clock(false);const t=Math.floor(S.time);const nb=best==null||t<best;if(nb){best=t;store.set('best',t)}clears++;store.set('clears',clears);store.set('save',null);Sfx.play('clear');rec();
+  overlay(`<h3>脱出成功！</h3><div class="big">${fmt(t)}</div><p>${nb?'ベスト更新！<br>':''}ヒント ${S.hints||0}回</p><div class="row"><button type="button" data-o="again">もう一度</button></div>`)}
+function rec(){$('#es-rec').textContent=best!=null?`ベスト ${fmt(best)}・脱出${clears}回`:''}
+function overlay(html){$('#es-room').querySelectorAll('.es-over').forEach(o=>o.remove());if(!html)return;const o=document.createElement('div');o.className='es-over';o.innerHTML=html;$('#es-room').appendChild(o)}
+function start(resume){const sv=store.get('save',null);S=resume&&sv?sv:fresh();view=S.wall||0;zoom=null;sel=null;dial=[0,0,0];books=[];tStart=0;draw();invDraw();clock(true);msg(resume&&sv?'つづきから。':'気がつくと、知らない書斎にいた…ドアから外に出よう');Save.touch({game:'escape'})}
+function title(){S=fresh();draw();invDraw();const sv=store.get('save',null);
+  overlay(`<h3>ミニ脱出</h3><p>部屋をタップして調べ、道具を使って脱出しよう</p><p>◀ ▶ で向きを変える。道具は下の欄で選んでから使う場所をタップ</p>${best!=null?`<p>ベスト ${fmt(best)}</p>`:''}<div class="row">${sv?'<button type="button" data-o="resume">つづきから</button>':''}<button type="button" data-o="new">${sv?'はじめから':'スタート'}</button></div>`)}
+$('#es-room').addEventListener('click',e=>{const o=e.target.closest('[data-o]');if(o){overlay(null);start(o.dataset.o==='resume');return}
+  if(!S||S.done&&!e.target.closest('[data-o]'))return;if(!tStart)return;
+  const n=e.target.closest('[data-nav]');if(n){if(n.dataset.nav==='back'){zoom=null;books=[]}else{view=(view+(+n.dataset.nav)+4)%4;S.wall=view}draw();msg('');save();return}
+  const h=e.target.closest('[data-hs]');if(h)act(h.dataset.hs)});
+$('#es-hint').onclick=()=>{if(S&&tStart&&!S.done)hint()};
+document.addEventListener('visibilitychange',()=>{if(!S||S.done||!S.inv)return;if(document.hidden){if(tStart){clock(false);save()}}else if(!$('#es-room .es-over'))clock(true)});
+window.addEventListener('pagehide',save);
+rec();title();
+});
+</script>
+<script>regSW('../sw.js')</script>
+</body>
+</html>

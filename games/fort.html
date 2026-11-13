@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ミニ要塞｜すきま脳トレ箱</title>
+<meta name="theme-color" content="#EBF0F6">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icons/icon-192.png">
+<link rel="apple-touch-icon" href="../icons/icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap">
+<link rel="stylesheet" href="../common/base.css">
+<style>
+.ft-hud{display:flex;justify-content:space-between;align-items:baseline;font-weight:700;font-size:13px;font-variant-numeric:tabular-nums;padding:0 2px 8px}
+.ft-hud b{font:400 20px var(--display)}
+.ft-wrap{flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
+.ft-box{position:relative;height:100%;max-width:100%;aspect-ratio:9/12;border:2.5px solid var(--ink);border-radius:12px;overflow:hidden;background:#9CCB7C}
+.ft-box canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none}
+.ft-over{position:absolute;inset:0;background:rgba(10,16,32,.62);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;text-align:center;padding:14px}
+.ft-over h3{font:400 24px var(--display);margin:0}.ft-over p{margin:0;font-weight:700;line-height:1.55;font-size:13.5px}.ft-over .big{font:400 36px var(--display)}
+.ft-panel{min-height:96px;padding:10px 0 14px;display:flex;flex-direction:column;gap:8px}
+.ft-row{display:flex;gap:6px}
+.ft-row .btn{flex:1;padding:9px 4px;font-size:12.5px;flex-direction:column;line-height:1.3}
+.ft-row .btn small{font-weight:500;font-size:10.5px;color:var(--ink2)}
+.ft-info{font-size:12.5px;font-weight:700;color:var(--ink2);min-height:18px}
+</style>
+</head>
+<body>
+<div id="app">
+<section class="view">
+  <header class="bar"><a class="back" href="../index.html">‹ 戻る</a><h2>ミニ要塞</h2><button class="btn" id="ft-speed" type="button" aria-pressed="false">×2</button><span class="timer" id="ft-best">ベスト 0波</span></header>
+  <div class="ft-hud"><span>波 <b id="ft-wave">0</b>/10</span><span>💰 <b id="ft-gold">100</b></span><span>❤️ <b id="ft-life">10</b></span></div>
+  <div class="ft-wrap"><div class="ft-box" id="ft-box"><canvas id="ft-cv"></canvas></div></div>
+  <div class="ft-panel" id="ft-panel"></div>
+</section>
+</div>
+<div id="layer"></div>
+<script src="../common/save.js"></script>
+<script src="../common/ui.js"></script>
+<script src="../common/sfx.js"></script>
+<script>
+Save.ready.then(()=>{
+const store=makeStore('ft_');
+const GW=9,GH=12,PATH=[[1,-1],[1,2],[7,2],[7,5],[1,5],[1,8],[7,8],[7,10],[4,10],[4,12.6]];
+const TW={arrow:{n:'弓矢',i:'🏹',cost:30,range:2.3,dmg:6,rate:.55,col:'#8A5A36',d:'すばやく1体を撃つ'},
+  cannon:{n:'大砲',i:'💥',cost:60,range:2.0,dmg:15,rate:1.4,splash:.9,col:'#5B6886',d:'まとめてダメージ'},
+  ice:{n:'氷',i:'❄️',cost:45,range:1.9,dmg:2,rate:.9,slow:1.6,col:'#4F86C6',d:'当てた敵を遅くする'}};
+const EN={slime:{hp:22,sp:1.0,gold:6,col:'#5BC46A'},run:{hp:13,sp:1.9,gold:6,col:'#F2C23A'},tank:{hp:80,sp:.62,gold:15,col:'#8A6A5C'},boss:{hp:520,sp:.5,gold:80,col:'#B07AE6'}};
+const cv=$('#ft-cv'),x=cv.getContext('2d');
+let cs=36,OX=0,OY=0,G=null,raf=0,last=0,fast=false,sel=null,best=store.get('best',0),state='title';
+const pathSet=new Set();for(let i=1;i<PATH.length;i++){let [a,b]=PATH[i-1],[c,d]=PATH[i];b=Math.max(0,b);d=Math.min(GH-1,d);for(let yy=Math.min(b,d);yy<=Math.max(b,d);yy++)for(let xx=Math.min(a,c);xx<=Math.max(a,c);xx++)pathSet.add(xx+','+Math.round(yy))}
+const segs=[];let total=0;for(let i=1;i<PATH.length;i++){const l=Math.hypot(PATH[i][0]-PATH[i-1][0],PATH[i][1]-PATH[i-1][1]);segs.push({a:PATH[i-1],b:PATH[i],l,s:total});total+=l}
+function posAt(d){for(const s of segs)if(d<=s.s+s.l){const t=(d-s.s)/s.l;return [s.a[0]+(s.b[0]-s.a[0])*t,s.a[1]+(s.b[1]-s.a[1])*t]}return PATH[PATH.length-1]}
+function size(){const r=cv.getBoundingClientRect(),d=window.devicePixelRatio||1;cv.width=r.width*d;cv.height=r.height*d;cs=Math.min(r.width/GW,r.height/GH);OX=(r.width-GW*cs)/2;OY=(r.height-GH*cs)/2;x.setTransform(d,0,0,d,d*OX,d*OY);draw()}
+function waveList(w){const L=[];const add=(k,n,gap)=>{for(let i=0;i<n;i++)L.push({k,gap})};
+  add('slime',4+w,.9);if(w>=2)add('run',2+w,.55);if(w>=4)add('tank',Math.floor(w/2),1.6);if(w>=6)add('run',w,.4);if(w>=7)add('tank',w-4,1.2);if(w===10)add('boss',1,2);return L}
+function newGame(){G={wave:0,gold:100,life:10,tw:[],en:[],pr:[],fx:[],queue:[],spawnT:0,running:false,kills:0};sel=null;state='play';overlay(null);hud();panel();last=performance.now();cancelAnimationFrame(raf);raf=requestAnimationFrame(loop);Save.touch({game:'fort'})}
+function hud(){$('#ft-wave').textContent=G?G.wave:0;$('#ft-gold').textContent=G?G.gold:100;$('#ft-life').textContent=G?G.life:10;$('#ft-best').textContent=`ベスト ${best}波`}
+function towerAt(a,b){return G.tw.find(t=>t.x===a&&t.y===b)}
+function stats(t){const T=TW[t.k],m=1+(t.lv-1)*.6;return {range:T.range+(t.lv-1)*.25,dmg:T.dmg*m,rate:T.rate*(1-(t.lv-1)*.1),splash:T.splash,slow:T.slow}}
+function upCost(t){return Math.round(TW[t.k].cost*.9*t.lv)}
+function panel(){const p=$('#ft-panel');if(!G){p.innerHTML='';return}
+  const waveBtn=`<button class="btn primary" id="ft-go" type="button" ${G.running||G.wave>=10?'disabled':''}>${G.running?`第${G.wave}波 進行中…`:G.wave>=10?'全部の波をふせいだ':`第${G.wave+1}波をよぶ ▶`}</button>`;
+  if(sel&&sel.t){const t=sel.t,s=stats(t);p.innerHTML=`<div class="ft-info">${TW[t.k].i} ${TW[t.k].n} Lv${t.lv}・攻撃${Math.round(s.dmg)}・射程${s.range.toFixed(1)}</div><div class="ft-row">${t.lv<3?`<button class="btn" type="button" data-a="up" ${G.gold<upCost(t)?'disabled':''}>強化 Lv${t.lv+1}<small>💰${upCost(t)}</small></button>`:'<button class="btn" type="button" disabled>最大レベル</button>'}<button class="btn" type="button" data-a="sell">売る<small>💰${Math.round(t.spent*.6)}</small></button><button class="btn" type="button" data-a="close">閉じる</button></div><div class="ft-row">${waveBtn}</div>`}
+  else if(sel){p.innerHTML=`<div class="ft-info">ここに何を建てる？</div><div class="ft-row">${Object.entries(TW).map(([k,T])=>`<button class="btn" type="button" data-b="${k}" ${G.gold<T.cost?'disabled':''}>${T.i} ${T.n}<small>💰${T.cost}・${T.d}</small></button>`).join('')}</div><div class="ft-row"><button class="btn" type="button" data-a="close">やめる</button>${waveBtn}</div>`}
+  else p.innerHTML=`<div class="ft-info">空いている草地をタップして塔を建てよう</div><div class="ft-row">${waveBtn}</div>`;
+  const g=$('#ft-go');if(g)g.onclick=startWave}
+$('#ft-panel').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||b.disabled||!G)return;
+  if(b.dataset.b){const T=TW[b.dataset.b];if(G.gold<T.cost)return;G.gold-=T.cost;G.tw.push({k:b.dataset.b,x:sel.x,y:sel.y,lv:1,cd:0,spent:T.cost,ang:0});Sfx.play('place');sel=null}
+  else if(b.dataset.a==='up'){const t=sel.t,c=upCost(t);if(G.gold<c)return;G.gold-=c;t.spent+=c;t.lv++;Sfx.play('coin')}
+  else if(b.dataset.a==='sell'){const t=sel.t;G.gold+=Math.round(t.spent*.6);G.tw=G.tw.filter(q=>q!==t);sel=null;Sfx.play('tap')}
+  else if(b.dataset.a==='close')sel=null;hud();panel();draw()});
+function startWave(){if(G.running||G.wave>=10)return;G.wave++;G.queue=waveList(G.wave);G.spawnT=.3;G.running=true;Sfx.play('ok');hud();panel()}
+function spawn(k){const E=EN[k],hp=Math.round(E.hp*Math.pow(1.26,G.wave-1));G.en.push({k,hp,max:hp,sp:E.sp,d:0,slow:0,gold:E.gold})}
+function step(dt){
+  if(G.running){G.spawnT-=dt;if(G.queue.length&&G.spawnT<=0){const q=G.queue.shift();spawn(q.k);G.spawnT=q.gap}
+    if(!G.queue.length&&!G.en.length){G.running=false;G.gold+=15+G.wave*4;Sfx.play('clear');if(G.wave>best){best=G.wave;store.set('best',best)}hud();panel();
+      if(G.wave>=10)return win();G.fx.push({t:'txt',x:GW/2,y:GH/2,s:`第${G.wave}波 クリア！ +${15+G.wave*4}`,life:1.6})}}
+  for(const e of G.en){const sp=e.sp*(e.slow>0?.5:1);e.slow-=dt;e.d+=sp*dt;if(e.d>=total){e.out=true;G.life-=e.k==='boss'?5:1;Sfx.play('ng');if(navigator.vibrate)navigator.vibrate(60);hud()}}
+  G.en=G.en.filter(e=>!e.out);if(G.life<=0)return lose();
+  for(const t of G.tw){t.cd-=dt;const s=stats(t);if(t.cd>0)continue;let tg=null;
+    for(const e of G.en){const [ex,ey]=posAt(e.d);if(Math.hypot(ex-t.x,ey-t.y)<=s.range&&(!tg||e.d>tg.d))tg=e}
+    if(tg){t.cd=s.rate;const [ex,ey]=posAt(tg.d);t.ang=Math.atan2(ey-t.y,ex-t.x);G.pr.push({k:t.k,x:t.x,y:t.y,tg,tx:ex,ty:ey,dmg:s.dmg,splash:s.splash,slow:s.slow,sp:t.k==='cannon'?6:10})}}
+  for(const p of G.pr){if(p.tg&&p.tg.hp>0){[p.tx,p.ty]=posAt(p.tg.d)}const dx=p.tx-p.x,dy=p.ty-p.y,dd=Math.hypot(dx,dy),mv=p.sp*dt;
+    if(dd<=mv){p.done=true;if(p.splash){for(const e of G.en){const [ex,ey]=posAt(e.d);if(Math.hypot(ex-p.tx,ey-p.ty)<=p.splash)e.hp-=p.dmg}G.fx.push({t:'boom',x:p.tx,y:p.ty,life:.3,r:p.splash});Sfx.play('hit')}
+      else if(p.tg&&p.tg.hp>0){p.tg.hp-=p.dmg;if(p.slow)p.tg.slow=p.slow}}
+    else{p.x+=dx/dd*mv;p.y+=dy/dd*mv}}
+  G.pr=G.pr.filter(p=>!p.done);
+  for(const e of G.en)if(e.hp<=0&&!e.dead){e.dead=true;G.gold+=e.gold;G.kills++;const [ex,ey]=posAt(e.d);G.fx.push({t:'txt',x:ex,y:ey-.3,s:'+'+e.gold,life:.7,small:true})}
+  if(G.en.some(e=>e.dead)){G.en=G.en.filter(e=>!e.dead);hud();if(sel)panel()}
+  for(const f of G.fx){f.life-=dt;if(f.t==='txt')f.y-=dt*.6}G.fx=G.fx.filter(f=>f.life>0)}
+function win(){state='over';store.set('plays',(store.get('plays',0)||0)+1);overlay(`<h3>要塞を守りきった！</h3><div class="big">10/10波</div><p>のこりライフ ${G.life}・たおした敵 ${G.kills}</p><p style="color:#FFE58A">タップでもう一回</p>`,newGame)}
+function lose(){state='over';store.set('plays',(store.get('plays',0)||0)+1);Sfx.play('lose');draw();overlay(`<h3>要塞が落ちた…</h3><div class="big">第${G.wave}波</div><p>ベスト ${best}波・たおした敵 ${G.kills}</p><p style="color:#FFE58A">タップでもう一回</p>`,newGame)}
+function overlay(html,cb){$('#ft-box').querySelectorAll('.ft-over').forEach(o=>o.remove());if(!html)return;const o=document.createElement('div');o.className='ft-over';o.innerHTML=html;$('#ft-box').appendChild(o);if(cb)setTimeout(()=>o.onclick=cb,400)}
+function title(){state='title';G=null;draw();overlay(`<h3>ミニ要塞</h3><p>道を進んでくる敵を、塔を建てて食い止めよう</p><p>🏹弓矢・💥大砲・❄️氷の3種類<br>塔をタップすると強化・売却</p><p>全10波をふせげばクリア。敵が城に着くとライフが減る</p><p>ベスト ${best}波</p><p style="color:#FFE58A">タップでスタート</p>`,newGame)}
+function loop(now){if(state!=='play')return;let dt=clamp((now-last)/1000,0,.05);last=now;if(fast)dt*=2;const n=fast?2:1;for(let i=0;i<n;i++){step(dt/n);if(state!=='play')break}draw();if(state==='play')raf=requestAnimationFrame(loop)}
+function draw(){const w=cv.clientWidth,h=cv.clientHeight;if(!w)return;x.fillStyle='#9CCB7C';x.fillRect(-OX,-OY,w,h);
+  for(let yy=0;yy<GH;yy++)for(let xx=0;xx<GW;xx++){if(pathSet.has(xx+','+yy)){x.fillStyle='#E2C796';x.fillRect(xx*cs,yy*cs,cs,cs)}else if((xx+yy)%2){x.fillStyle='#94C273';x.fillRect(xx*cs,yy*cs,cs,cs)}}
+  // 城
+  const cx=4.5*cs,cy=GH*cs;x.fillStyle='#8A93A6';x.fillRect(cx-cs*.9,cy-cs*.55,cs*1.8,cs*.55);for(let i=0;i<4;i++)x.fillRect(cx-cs*.9+i*cs*.5,cy-cs*.75,cs*.3,cs*.2);x.fillStyle='#D2433A';x.beginPath();x.moveTo(cx,cy-cs*1.2);x.lineTo(cx+cs*.35,cy-cs*1.05);x.lineTo(cx,cy-cs*.9);x.fill();x.fillStyle='#5B6886';x.fillRect(cx-1,cy-cs*1.2,2,cs*.5);
+  if(!G)return;
+  if(sel){x.strokeStyle='#FFE58A';x.lineWidth=3;x.strokeRect(sel.x*cs+2,sel.y*cs+2,cs-4,cs-4);if(sel.t){const s=stats(sel.t);x.fillStyle='rgba(255,255,255,.18)';x.strokeStyle='rgba(255,255,255,.6)';x.lineWidth=1.5;x.beginPath();x.arc((sel.x+.5)*cs,(sel.y+.5)*cs,s.range*cs,0,7);x.fill();x.stroke()}}
+  for(const t of G.tw){const px=(t.x+.5)*cs,py=(t.y+.5)*cs,T=TW[t.k];x.fillStyle='#E8D9B8';x.beginPath();x.roundRect(px-cs*.38,py-cs*.38,cs*.76,cs*.76,cs*.12);x.fill();x.strokeStyle='#5B3A22';x.lineWidth=1.5;x.stroke();
+    x.save();x.translate(px,py);x.rotate(t.ang);x.fillStyle=T.col;x.fillRect(0,-cs*.07,cs*.34,cs*.14);x.restore();x.fillStyle=T.col;x.beginPath();x.arc(px,py,cs*.2,0,7);x.fill();
+    for(let i=0;i<t.lv;i++){x.fillStyle='#F2C23A';x.beginPath();x.arc(px-cs*.22+i*cs*.22,py+cs*.3,cs*.06,0,7);x.fill()}}
+  for(const e of G.en){const [ex,ey]=posAt(e.d),px=(ex+.5)*cs,py=(ey+.5)*cs,E=EN[e.k],r=cs*(e.k==='boss'?.4:e.k==='tank'?.32:.24);
+    x.fillStyle=e.slow>0?'#9CC8F0':E.col;x.beginPath();x.ellipse(px,py+r*.1,r,r*.85,0,0,7);x.fill();x.fillStyle='#fff';x.beginPath();x.arc(px-r*.35,py-r*.1,r*.22,0,7);x.arc(px+r*.35,py-r*.1,r*.22,0,7);x.fill();x.fillStyle='#22222A';x.beginPath();x.arc(px-r*.3,py-r*.08,r*.1,0,7);x.arc(px+r*.4,py-r*.08,r*.1,0,7);x.fill();
+    if(e.hp<e.max){x.fillStyle='rgba(0,0,0,.4)';x.fillRect(px-r,py-r-6,r*2,4);x.fillStyle='#D2433A';x.fillRect(px-r,py-r-6,r*2*Math.max(0,e.hp/e.max),4)}}
+  for(const p of G.pr){const px=(p.x+.5)*cs,py=(p.y+.5)*cs;x.fillStyle=p.k==='cannon'?'#2B2B33':p.k==='ice'?'#CFE8FF':'#5B3A22';x.beginPath();x.arc(px,py,p.k==='cannon'?cs*.1:cs*.06,0,7);x.fill()}
+  for(const f of G.fx){if(f.t==='boom'){x.fillStyle=`rgba(255,160,60,${f.life*2})`;x.beginPath();x.arc((f.x+.5)*cs,(f.y+.5)*cs,f.r*cs*(1.2-f.life),0,7);x.fill()}
+    else{x.globalAlpha=Math.min(1,f.life*2);x.font=`900 ${f.small?12:17}px "Zen Kaku Gothic New",sans-serif`;x.textAlign='center';x.textBaseline='middle';x.lineWidth=3;x.strokeStyle='#18264A';x.strokeText(f.s,(f.x+.5)*cs,(f.y+.5)*cs);x.fillStyle='#FFE58A';x.fillText(f.s,(f.x+.5)*cs,(f.y+.5)*cs);x.globalAlpha=1}}}
+cv.addEventListener('pointerdown',e=>{if(!G||state!=='play')return;const r=cv.getBoundingClientRect();const a=Math.floor((e.clientX-r.left-OX)/cs),b=Math.floor((e.clientY-r.top-OY)/cs);if(a<0||b<0||a>=GW||b>=GH)return;
+  const t=towerAt(a,b);if(t)sel={x:a,y:b,t};else if(pathSet.has(a+','+b)||b>=GH-1&&a>=3&&a<=5){sel=null}else sel={x:a,y:b};Sfx.play('tap');panel();draw()});
+$('#ft-speed').onclick=()=>{fast=!fast;$('#ft-speed').setAttribute('aria-pressed',String(fast))};
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&state==='play'){state='paused';overlay('<h3>一時停止中</h3><p style="color:#FFE58A">タップで再開</p>',()=>{overlay(null);state='play';last=performance.now();raf=requestAnimationFrame(loop)})}});
+new ResizeObserver(size).observe($('#ft-box'));hud();size();title();
+if(/debug=1/.test(location.search))window.__ft={get G(){return G},startWave,get state(){return state}};
+});
+</script>
+<script>regSW('../sw.js')</script>
+</body>
+</html>

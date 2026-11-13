@@ -42,6 +42,7 @@
 .cc.done,.rc.done{color:var(--cellX)}
 .cc.hl,.rc.hl{background:var(--peer)}
 .cell{background:var(--card);border-right:1px solid var(--line);border-bottom:1px solid var(--line);position:relative}
+.cell.hr{background:var(--peer)}
 .cell.f{background:var(--ink)}
 .cell.x::before,.cell.x::after{content:"";position:absolute;left:22%;right:22%;top:50%;height:1.5px;background:var(--cellX);transform:rotate(45deg)}
 .cell.x::after{transform:rotate(-45deg)}
@@ -50,6 +51,20 @@
 .cell.l0{border-left:2px solid var(--ink)} .cell.top0{border-top:2px solid var(--ink)}
 .tools{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding-bottom:16px}
 .tools .btn{padding:11px 4px;font-size:14px}
+.stage.zoomed .cc{position:sticky;top:0;z-index:2;background:var(--paper)}
+.stage.zoomed .rc{position:sticky;left:0;z-index:2;background:var(--paper)}
+.stage.zoomed .corner{position:sticky;top:0;left:0;z-index:3;background:var(--paper)}
+.stage.zoomed .cc.hl,.stage.zoomed .rc.hl{background:var(--peer)}
+.cell.hintc{box-shadow:inset 0 0 0 2px var(--mark)}
+.board.cz .cell{transition:background-color .35s;border-right-color:rgba(0,0,0,.05);border-bottom-color:rgba(0,0,0,.05)}
+.board.cz .cell.t5,.board.cz .cell.b5,.board.cz .cell.l0,.board.cz .cell.top0{border-color:rgba(0,0,0,.08)}
+.animals{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.animal{border:1.5px solid var(--ink);background:var(--card);color:var(--ink);border-radius:12px;padding:10px;display:flex;gap:10px;align-items:center;box-shadow:2px 2px 0 var(--ink);text-align:left}
+.animal canvas,.animal .q{width:56px;height:56px;flex:0 0 56px;image-rendering:pixelated;border-radius:6px}
+.animal .q{display:grid;place-items:center;font:400 26px var(--display);color:var(--ink2);background:var(--peer)}
+.animal b{display:block;font-size:14px}.animal small{display:block;font-size:11px;color:var(--ink2);line-height:1.5}
+.animal.soon{opacity:.5;box-shadow:none;border-style:dashed}
+.reveal.big canvas{width:min(72vw,280px)}
 .reveal{display:flex;justify-content:center}
 .reveal canvas{width:min(60vw,200px);height:auto;image-rendering:pixelated;border:2px solid var(--ink);border-radius:6px;background:var(--card)}
 </style>
@@ -60,6 +75,7 @@
 
   <section id="menu">
     <div class="sec" id="resumes" hidden></div>
+    <div class="sec"><h3>動物シリーズ <small style="font:500 12px var(--body);color:var(--ink2)">25×25・解くとカラーに</small></h3><div class="animals" id="animals"></div></div>
     <div class="sec"><h3>絵の問題</h3><div class="pics" id="pics"></div></div>
     <div class="sec" id="galWrap" hidden><h3>完成した絵 <small id="galN" style="font:500 12px var(--body);color:var(--ink2)"></small></h3><div class="pics" id="gal"></div></div>
     <div class="sec"><h3>自動生成</h3><div class="autos" id="autos"></div>
@@ -71,6 +87,7 @@
       <div class="seg" id="tool" role="group" aria-label="道具"><button type="button" data-v="1" aria-pressed="true">■ 塗る</button><button type="button" data-v="2" aria-pressed="false">× 印</button><button type="button" data-v="3" aria-pressed="false">✋ 移動</button></div>
       <button class="btn" id="zoom" type="button" aria-pressed="false">拡大</button>
       <button class="btn" id="miss" type="button" aria-pressed="false">ミスを教える</button>
+      <button class="btn" id="hint" type="button">💡 ヒント</button>
     </div>
     <div class="stage" id="stage"><div class="board" id="board"></div></div>
     <p class="msg" id="msg"></p>
@@ -304,11 +321,53 @@ function pxGenerate(n){
   return null;
 }
 
+/* 動物シリーズ（オリジナルのドット絵）
+   新しい動物は PX_ANIMALS に1件足すだけで追加できます。
+   rows の文字 → pal の [色, 塗るマスなら1 / 塗らないマスなら0]。'.' は背景（塗らない）
+   正解・数字ヒントは rows から自動で作ります */
+const PX_ANIMALS=[
+ {id:'a-redpanda',name:'レッサーパンダ',size:25,diff:'ふつう',
+  bg:'#EAF3E6',
+  pal:{R:['#C8552B',1],K:['#2E211C',1],D:['#6B2A18',1],E:['#111111',1],N:['#111111',1],W:['#FBF6EC',0],C:['#ECB878',0]},
+  rows:[
+   '..RR..........RR.........',
+   '.RWWR........RWWR........',
+   '.RWWRRRRRRRRRRWWR........',
+   '.RRWRRRRRRRRRRWRR........',
+   'RRRRRWWRRRRWWRRRRR.......',
+   'RRRRWWWWRRWWWWRRRR.......',
+   'RWWRWEWRRRRWEWRWWR.......',
+   'RWWWRDWWWWWWDRWWWR.......',
+   '.RWWWDWWNNWWDWWWR........',
+   '.RRWWDWWWWWWDWWRR........',
+   '..RRWWWWKKWWWWRR.........',
+   '...RRRWWWWWWRRR..........',
+   '....RRRRRRRRRR...........',
+   '....RRKKKKKKRR.......RRR.',
+   '...RRKKKKKKKKRR.....RRRRR',
+   '...RKKKKKKKKKKR.....RCCCR',
+   '..RRKKKKKKKKKKRR...RRRRRR',
+   '..RKKKKKKKKKKKKR...RRRRRR',
+   '..RKKKKKKKKKKKKR...RCCCCR',
+   '..RKKKKKKKKKKKKR...RRRRRR',
+   '..RRKKKKKKKKKKRR...RRRRRR',
+   '...RKKKKKKKKKKR...RRCCCCR',
+   '...KKKKK..KKKKK..RRRRRRR.',
+   '.KKKKKKK..KKKKKKKRRRRR...',
+   '.KKKKKK....KKKKKK........']},
+];
+// 今後追加する予定（名前は出さずに「準備中」として並べる）
+const PX_ANIMALS_SOON=['猫','柴犬','うさぎ','フクロウ','ペンギン','ハリネズミ','カワウソ','パンダ','キツネ'];
+function pxAnimalSol(a){return a.rows.map(r=>[...r].map(c=>a.pal[c]&&a.pal[c][1]?1:0))}
+function pxAnimalColors(a){return a.rows.map(r=>[...r].map(c=>a.pal[c]?a.pal[c][0]:a.bg))}
+function pxFullCanvas(cols){const h=cols.length,w=cols[0].length,c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');
+  for(let y=0;y<h;y++)for(let xx=0;xx<w;xx++){x.fillStyle=cols[y][xx];x.fillRect(xx,y,1,1)}return c}
+
 Save.ready.then(()=>{
 const $=s=>document.querySelector(s);
 const store=makeStore('px_');
 const fmt=s=>{s=Math.floor(s||0);return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')};
-let P=null,tool=1,missOn=store.get('miss',false),hist=[],fut=[],zoom=false,tAcc=0,tStart=null,tIv=null;
+let P=null,tool=1,missOn=store.get('miss',false),hist=[],fut=[],zoom=0,tAcc=0,tStart=null,tIv=null;
 
 /* ---------- clock ---------- */
 const now=()=>tAcc+(tStart?(performance.now()-tStart)/1000:0);
@@ -328,13 +387,19 @@ function showMenu(){
     if(done)b.appendChild(thumb(s,p.rows));else{const q=document.createElement('div');q.className='q';q.textContent='?';b.appendChild(q)}
     b.insertAdjacentHTML('beforeend',`<span>${done?p.name:'？？？'}</span><small>${s[0].length}×${s.length}</small>`);
     b.onclick=()=>startPic(p);$('#pics').appendChild(b)});
+  const arec=store.get('animals',{});$('#animals').innerHTML='';
+  PX_ANIMALS.forEach(a=>{const r=arec[a.id];const b=document.createElement('button');b.type='button';b.className='animal';
+    if(r)b.appendChild(pxFullCanvas(pxAnimalColors(a)));else{const q=document.createElement('div');q.className='q';q.textContent='?';b.appendChild(q)}
+    b.insertAdjacentHTML('beforeend',`<div><b>${r?a.name:'？？？'}</b><small>${a.size}×${a.size}・${a.diff}</small><small>${r?`ベスト ${fmt(r.best)}・ヒント${r.hints}回`:'未クリア'}</small></div>`);
+    b.onclick=()=>startAnimal(a);$('#animals').appendChild(b)});
+  if(PX_ANIMALS_SOON.length)$('#animals').insertAdjacentHTML('beforeend',`<div class="animal soon"><div class="q">…</div><div><b>次の動物</b><small>準備中（あと${PX_ANIMALS_SOON.length}種）</small></div></div>`);
   const best=store.get('best',{});
   $('#autos').innerHTML=[5,10,15].map(n=>`<button class="auto" type="button" data-n="${n}"><b>${n}×${n}</b><small>ベスト ${best[n]!=null?fmt(best[n]):'--:--'}</small></button>`).join('');
   const gal=store.get('gallery',[]);$('#galWrap').hidden=!gal.length;$('#galN').textContent=gal.length+'枚';$('#gal').innerHTML='';
-  gal.slice(0,16).forEach((g,i)=>{const b=document.createElement('button');b.type='button';b.className='pic';b.appendChild(thumb(g.sol,null,g.colors));
+  gal.slice(0,16).forEach((g,i)=>{const b=document.createElement('button');b.type='button';b.className='pic';b.appendChild(g.full?pxFullCanvas(g.full):thumb(g.sol,null,g.colors));
     b.insertAdjacentHTML('beforeend',`<span>${g.name}</span><small>${g.w}×${g.h}</small>`);
     b.onclick=()=>{$('#layer').innerHTML=`<div class="scrim" id="gsc"><div class="sheet"><h3>「${g.name}」</h3><div class="reveal" id="rv"></div><p style="text-align:center">${g.w}×${g.h}・タイム ${fmt(g.time)}・${new Date(g.at).toLocaleDateString('ja-JP')}</p><button class="btn" type="button" style="padding:12px">閉じる</button></div></div>`;
-      $('#rv').appendChild(thumb(g.sol,null,g.colors));$('#gsc').onclick=e=>{if(e.target.id==='gsc'||e.target.closest('button'))$('#layer').innerHTML=''}};
+      $('#rv').appendChild(g.full?pxFullCanvas(g.full):thumb(g.sol,null,g.colors));$('#gsc').onclick=e=>{if(e.target.id==='gsc'||e.target.closest('button'))$('#layer').innerHTML=''}};
     $('#gal').appendChild(b)});
   Save.listPuzzles('picross').then(list=>{const r=$('#resumes');const ip=(list||[]).filter(x=>x.status!=='clear');
     if(!ip.length){r.hidden=true;return}r.hidden=false;
@@ -347,6 +412,7 @@ function showMenu(){
 $('#autos').addEventListener('click',e=>{const b=e.target.closest('[data-n]');if(b)startAuto(+b.dataset.n)});
 
 /* ---------- start ---------- */
+function startAnimal(a){const sol=pxAnimalSol(a);load({kind:'animal',id:a.id,sol,marks:sol.map(r=>r.map(()=>0)),time:0,miss:0,hints:0})}
 function startPic(p){const sol=pxPicSol(p);load({kind:'pic',id:p.id,sol,marks:sol.map(r=>r.map(()=>0)),time:0,miss:0})}
 function startAuto(n){
   $('#msg').textContent='問題を作っています…';
@@ -357,10 +423,12 @@ function loadRec(rec){load({...rec.data,uid:rec.id,created:rec.created})}
 function load(st){
   P=st;if(!P.uid){P.uid=Save.newId('picross');P.created=Date.now()}P.clues=pxCluesOf(P.sol);P.h=P.sol.length;P.w=P.sol[0].length;hist=[];fut=[];
   $('#menu').hidden=true;$('#play').hidden=false;$('#time').hidden=false;$('#back').href='#';
-  $('#title').textContent=P.kind==='pic'?`ピクロス ${P.w}×${P.h}`:`自動生成 ${P.w}×${P.h}`;
+  P.hints=P.hints||0;P.cz=null;P.czCols=null;$('#board').classList.remove('cz');
+  if(P.done&&P.kind==='animal'){const a=PX_ANIMALS.find(v=>v.id===P.id);if(a){P.czCols=pxAnimalColors(a);P.cz=P.w+P.h;$('#board').classList.add('cz')}}
+  $('#title').textContent=P.kind==='animal'?`動物シリーズ ${P.w}×${P.h}`:P.kind==='pic'?`ピクロス ${P.w}×${P.h}`:`自動生成 ${P.w}×${P.h}`;
   tAcc=P.time||0;tStart=null;clockRun();build();render();
 }
-function save(){if(!P)return;P.time=now();const data={kind:P.kind,id:P.id,sol:P.sol,colors:P.colors,name:P.name,marks:P.marks,time:P.time,miss:P.miss,done:!!P.done};const m=Save.describe('picross',data);
+function save(){if(!P)return;P.time=now();const data={kind:P.kind,id:P.id,sol:P.sol,colors:P.colors,name:P.name,marks:P.marks,time:P.time,miss:P.miss,hints:P.hints||0,done:!!P.done};const m=Save.describe('picross',data);
   Save.putPuzzle({id:P.uid,game:'picross',...m,time:P.time,status:P.done?'clear':'play',created:P.created,data});Save.touch({game:'picross',id:P.uid,title:m.title})}
 
 /* ---------- board ---------- */
@@ -372,14 +440,14 @@ function build(){
   const availW=Math.min(st.width,520),availH=st.height;
   let cs=Math.floor(Math.min(42,(availW-4)/(w+maxR*.62),(availH-4)/(h+maxC*.75)));
   cs=Math.max(cs,14);
-  if(zoom)cs=Math.max(cs,Math.min(44,Math.round(cs*1.8)));
+  if(zoom)cs=Math.max(cs,Math.min(44,Math.round(cs*(zoom===2?2.6:1.8))));
   $('#stage').classList.toggle('zoomed',zoom);
   const fs=Math.max(9,Math.min(15,cs*.52));
   b.style.gridTemplateColumns=`${Math.ceil(maxR*fs*.95+6)}px repeat(${w},${cs}px)`;
   b.style.gridTemplateRows=`${Math.ceil(maxC*fs*1.2+4)}px repeat(${h},${cs}px)`;
   b.style.fontSize=fs+'px';
   b.innerHTML='';cells=[];rcs=[];ccs=[];
-  b.appendChild(document.createElement('div'));
+  {const cn=document.createElement('div');cn.className='corner';b.appendChild(cn)}
   for(let x=0;x<w;x++){const d=document.createElement('div');d.className='cc';d.innerHTML=clues.cols[x].map(v=>`<span>${v}</span>`).join('');b.appendChild(d);ccs.push(d)}
   for(let y=0;y<h;y++){
     const r=document.createElement('div');r.className='rc';r.innerHTML=clues.rows[y].map(v=>`<span>${v}</span>`).join('');b.appendChild(r);rcs.push(r);
@@ -396,13 +464,17 @@ function build(){
 function lineDone(line,clue){const c=pxClues(line);return c.length===clue.length&&c.every((v,i)=>v===clue[i])}
 function render(hy=-1,hx=-1){
   const {h,w,marks,sol}=P;
+  const czOn=P.cz!=null&&P.czCols;
   for(let y=0;y<h;y++)for(let x=0;x<w;x++){const m=marks[y][x],c=cells[y][x];
-    c.className=c.className.replace(/ ?\b(f|x|bad)\b/g,'');
+    c.className=c.className.replace(/ ?\b(f|x|bad|hr)\b/g,'');
+    if(czOn&&x+y<=P.cz){c.style.backgroundColor=P.czCols[y][x];continue}
+    c.style.backgroundColor='';
+    if(hy>=0&&(y===hy||x===hx)&&m!==1)c.classList.add('hr');
     if(m===1)c.classList.add('f');else if(m===2)c.classList.add('x');else if(m===3)c.classList.add('x','bad')}
   for(let y=0;y<h;y++){rcs[y].classList.toggle('done',lineDone(marks[y].map(v=>v===1),P.clues.rows[y]));rcs[y].classList.toggle('hl',y===hy)}
   for(let x=0;x<w;x++){ccs[x].classList.toggle('done',lineDone(marks.map(r=>r[x]===1),P.clues.cols[x]));ccs[x].classList.toggle('hl',x===hx)}
   const m=$('#msg');m.className='msg'+(P.miss?' warn':'');
-  m.textContent=missOn?`ミス ${P.miss}`:'数字の数だけ、続けて塗る';
+  m.textContent=P.done?'':hy>=0?`${hy+1}行目・${hx+1}列目`:(missOn?`ミス ${P.miss}`:'数字の数だけ、続けて塗る')+(P.hints?`・ヒント${P.hints}回`:'');
 }
 function cellAt(e){const el=document.elementFromPoint(e.clientX,e.clientY);return el&&el.classList.contains('cell')?[+el.dataset.y,+el.dataset.x]:null}
 let drag=null;
@@ -415,7 +487,11 @@ function apply(y,x){
   if(t===1&&missOn&&P.sol[y][x]===0){P.marks[y][x]=3;P.miss++;return}
   P.marks[y][x]=t;
 }
+const ptrs=new Map();let pan=null;
+const midp=()=>{let x=0,y=0;for(const v of ptrs.values()){x+=v.x;y+=v.y}return {x:x/ptrs.size,y:y/ptrs.size}};
 $('#board').addEventListener('pointerdown',e=>{
+  if(tool!==3&&e.pointerType==='touch'){ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+    if(ptrs.size>=2){if(drag){if(hist.length)P.marks=hist.pop();drag=null;render()}pan=midp();e.preventDefault();return}}
   if(!P||P.done||tool===3)return;const c=cellAt(e);if(!c)return;e.preventDefault();
   const [y,x]=c,cur=P.marks[y][x];if(cur===3)return;
   hist.push(P.marks.map(r=>r.slice()));if(hist.length>200)hist.shift();fut=[];
@@ -425,6 +501,8 @@ $('#board').addEventListener('pointerdown',e=>{
   apply(y,x);render(y,x);
 });
 $('#board').addEventListener('pointermove',e=>{
+  if(ptrs.has(e.pointerId))ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(pan){const m=midp(),st=$('#stage');st.scrollLeft-=m.x-pan.x;st.scrollTop-=m.y-pan.y;pan=m;return}
   if(!drag)return;const c=cellAt(e);if(!c)return;let [y,x]=c;
   if(!drag.axis&&(y!==drag.y||x!==drag.x))drag.axis=y!==drag.y?'v':'h';
   if(drag.axis==='v')x=drag.x;else if(drag.axis==='h')y=drag.y;
@@ -433,12 +511,14 @@ $('#board').addEventListener('pointermove',e=>{
   render(y,x);
 });
 function endDrag(){if(!drag)return;drag=null;render();check();save()}
-$('#board').addEventListener('pointerup',endDrag);$('#board').addEventListener('pointercancel',endDrag);
+const ptrUp=e=>{ptrs.delete(e.pointerId);if(ptrs.size<2)pan=null};
+$('#board').addEventListener('pointerup',e=>{ptrUp(e);endDrag()});$('#board').addEventListener('pointercancel',e=>{ptrUp(e);endDrag()});
 
 function check(){
   const {h,w,marks,sol}=P;
   for(let y=0;y<h;y++)for(let x=0;x<w;x++)if((marks[y][x]===1)!==(sol[y][x]===1))return;
   P.done=true;clockStop();P.time=tAcc;
+  if(P.kind==='animal')return clearAnimal();
   for(let y=0;y<h;y++)for(let x=0;x<w;x++)if(marks[y][x]!==1)marks[y][x]=2;
   render();
   store.set('count',store.get('count',0)+1);
@@ -460,9 +540,38 @@ function check(){
   },350);
 }
 
+function colorize(done){const {h,w}=P,max=h+w-2;$('#board').classList.add('cz');P.cz=-1;
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches){P.cz=max;render();return setTimeout(done,300)}
+  const it=setInterval(()=>{if(!P||P.cz==null){clearInterval(it);return}P.cz+=1;render();if(P.cz>=max){clearInterval(it);setTimeout(done,450)}},Math.max(18,1300/max))}
+function clearAnimal(){
+  const a=PX_ANIMALS.find(v=>v.id===P.id);const {w,h}=P;P.czCols=pxAnimalColors(a);
+  render();
+  store.set('count',store.get('count',0)+1);
+  const rec=store.get('animals',{});const r=rec[a.id]||{clears:0};const t=Math.floor(P.time);const nb=r.best==null||t<r.best;
+  rec[a.id]={clears:(r.clears||0)+1,best:nb?t:r.best,hints:nb?P.hints:Math.min(r.hints??99,P.hints),last:{time:t,hints:P.hints,at:Date.now()}};store.set('animals',rec);
+  const gal=store.get('gallery',[]);gal.unshift({name:a.name,w,h,sol:P.sol,full:P.czCols,time:t,at:Date.now()});store.set('gallery',gal.slice(0,150));
+  save();
+  Sfx.play('ok');
+  colorize(()=>{if(!P||P.id!==a.id)return;
+    $('#layer').innerHTML=`<div class="scrim"><div class="sheet"><h3>「${a.name}」が完成！</h3>
+      <div class="reveal big" id="rv"></div>
+      <p style="text-align:center">タイム ${fmt(t)}${nb?'　ベスト更新！':''}<br>ヒント ${P.hints}回${missOn&&P.miss?`・ミス ${P.miss}`:''}・${(r.clears||0)+1}回目のクリア</p>
+      <div class="row"><button class="btn" type="button" data-a="view">絵を見る</button><button class="btn primary" type="button" data-a="quit">問題を選ぶ</button></div></div></div>`;
+    $('#rv').appendChild(pxFullCanvas(P.czCols));
+    $('#layer').querySelector('.sheet').onclick=e=>{const b=e.target.closest('[data-a]');if(!b)return;$('#layer').innerHTML='';if(b.dataset.a==='quit')showMenu()}});
+}
+$('#hint').onclick=()=>{if(!P||P.done)return;const {h,w,sol,marks}=P;const wrong=[],need=[];
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){const m=marks[y][x],s=sol[y][x];if(!s&&(m===1))wrong.push([y,x]);else if(s&&m!==1)need.push([y,x])}
+  const pool=wrong.length?wrong:need;if(!pool.length)return;
+  hist.push(P.marks.map(r=>r.slice()));if(hist.length>200)hist.shift();fut=[];
+  const [y,x]=pool[Math.random()*pool.length|0];marks[y][x]=sol[y][x]?1:2;P.hints=(P.hints||0)+1;Sfx.play('coin');
+  render(y,x);const c=cells[y][x];c.classList.add('hintc');c.scrollIntoView({block:'nearest',inline:'nearest'});setTimeout(()=>{c.classList.remove('hintc');if(P&&!P.done)render()},1400);
+  toast(wrong.length?`${y+1}行目・${x+1}列目は塗らないマスでした`:`${y+1}行目・${x+1}列目を塗りました`);check();save()};
+
 /* ---------- controls ---------- */
 $('#tool').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;tool=+b.dataset.v;for(const x of $('#tool').children)x.setAttribute('aria-pressed',String(x===b));$('#board').style.touchAction=tool===3?'auto':'none'});
-$('#zoom').onclick=()=>{zoom=!zoom;$('#zoom').setAttribute('aria-pressed',String(zoom));if(zoom&&tool!==3)toast('拡大中は「✋ 移動」で画面を動かせます');if(P){build();render()}};
+$('#zoom').onclick=()=>{const big=P&&P.w>=20;zoom=big?(zoom+1)%3:(zoom?0:1);$('#zoom').setAttribute('aria-pressed',String(!!zoom));$('#zoom').textContent=zoom===2?'拡大 大':zoom===1?(big?'拡大 中':'拡大'):'拡大';
+  if(zoom&&tool!==3)toast('拡大中は2本指か「✋ 移動」で画面を動かせます');if(P){build();render()}};
 $('#redo').onclick=()=>{if(!P||P.done||!fut.length)return;hist.push(P.marks.map(r=>r.slice()));P.marks=fut.pop();render();save()};
 $('#miss').setAttribute('aria-pressed',String(missOn));
 $('#miss').onclick=()=>{missOn=!missOn;store.set('miss',missOn);$('#miss').setAttribute('aria-pressed',String(missOn));if(P)render()};
