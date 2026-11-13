@@ -63,7 +63,7 @@ function step(dt){const p=G.p,gy=GY();
 function end(fail){G.st='end';cancelAnimationFrame(raf);draw();const d=Math.max(0,Math.round((G.p.x-HIT.x)/PX));const nb=d>best;if(nb){best=d;store.set('best',best)}
   const h=store.get('hist',[]);h.unshift(d);store.set('hist',h.slice(0,20));store.set('plays',(store.get('plays',0)||0)+1);hud();Sfx.play(nb?'clear':fail?'ng':'ok');
   overlay(`<h3>${fail?'からぶり':'記録'}</h3><div class="big">${d}m</div><p>${nb?'ベスト更新！':''}</p><p style="color:#FFE58A">タップでもう一回</p>`,start)}
-function loop(now){if(!G||G.st==='end')return;const dt=Math.min(.033,(now-last)/1000);last=now;step(dt);hud();draw();if(G.st!=='end')raf=requestAnimationFrame(loop)}
+function loop(now){if(!G||G.st==='end')return;const dt=clamp((now-last)/1000,0,.033);last=now;step(dt);hud();draw();if(G.st!=='end')raf=requestAnimationFrame(loop)}
 function penguin(px,py,rot){x.save();x.translate(px,py);x.rotate(rot);
   x.fillStyle='#2B2B33';x.beginPath();x.ellipse(0,0,11,14,0,0,7);x.fill();x.fillStyle='#fff';x.beginPath();x.ellipse(2,3,7,10,0,0,7);x.fill();
   x.fillStyle='#2B2B33';x.beginPath();x.arc(3,-7,1.8,0,7);x.fill();x.fillStyle='#F2A23A';x.beginPath();x.moveTo(8,-6);x.lineTo(15,-4);x.lineTo(8,-2);x.fill();

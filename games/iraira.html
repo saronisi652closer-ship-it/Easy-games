@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>イライラ棒｜すきま脳トレ箱</title>
+<meta name="theme-color" content="#EBF0F6">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icons/icon-192.png">
+<link rel="apple-touch-icon" href="../icons/icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap">
+<link rel="stylesheet" href="../common/base.css">
+<style>
+.ir-hud{display:flex;justify-content:space-between;align-items:baseline;font-weight:700;font-size:13px;font-variant-numeric:tabular-nums;padding:0 2px 8px}
+.ir-hud b{font:400 22px var(--display)}
+.ir-box{position:relative;flex:1;min-height:0;margin-bottom:12px;border:2.5px solid var(--ink);border-radius:12px;overflow:hidden;background:#2A2F45}
+.ir-box canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none}
+.ir-over{position:absolute;inset:0;background:rgba(10,16,32,.66);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center;padding:16px;overflow:auto}
+.ir-over h3{font:400 26px var(--display);margin:0}.ir-over p{margin:0;font-weight:700;line-height:1.6}.ir-over .big{font:400 40px var(--display)}
+.ir-stg{display:grid;grid-template-columns:repeat(4,64px);gap:8px;margin:6px 0}
+.ir-stg button{border:2px solid #fff;background:rgba(255,255,255,.12);color:#fff;border-radius:10px;padding:6px 0;font-weight:900;font-size:16px;line-height:1.2}
+.ir-stg button small{display:block;font-size:10px;font-weight:700;opacity:.85}
+.ir-stg button:disabled{opacity:.3}
+</style>
+</head>
+<body>
+<div id="app">
+<section class="view">
+  <header class="bar"><a class="back" href="../index.html">‹ 戻る</a><h2>イライラ棒</h2><button class="btn" id="ir-menu" type="button">ステージ</button><span class="timer" id="ir-time">0.0秒</span></header>
+  <div class="ir-hud"><span>ステージ <b id="ir-st">1</b></span><span id="ir-msg">指をすべらせて動かす</span><span>ミス <b id="ir-miss">0</b></span></div>
+  <div class="ir-box" id="ir-box"><canvas id="ir-cv"></canvas></div>
+</section>
+</div>
+<div id="layer"></div>
+<script src="../common/save.js"></script>
+<script src="../common/ui.js"></script>
+<script src="../common/sfx.js"></script>
+<script>
+Save.ready.then(()=>{
+const store=makeStore('ir_');
+const LW=360,LH=540,TIP=5,NST=8;
+const cv=$('#ir-cv'),x=cv.getContext('2d');
+let W=360,H=540,sc=1,ox=0,oy=0,S=null,raf=0,unlocked=store.get('stage',1),bests=store.get('best',{});
+function rng(seed){return()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function build(n){const R=rng(n*7919+13),hw=[30,26,23,20,18,16,14,13][n-1],rows=n<=2?4:n<=5?5:6,amp=n<=1?10:n<=4?16:20;
+  const top=48,bot=LH-48,gap=(bot-top)/(rows-1),pts=[];const xl=44,xr=LW-44;
+  for(let i=0;i<rows;i++){const y=bot-i*gap,ltr=i%2===0,ph=R()*6,fr=1.5+R()*2.5;
+    for(let k=0;k<=40;k++){const t=k/40,xx=ltr?xl+(xr-xl)*t:xr-(xr-xl)*t;const yy=y+Math.sin(t*Math.PI*fr+ph)*amp*Math.sin(t*Math.PI);pts.push([xx,yy])}
+    if(i<rows-1){const xe=ltr?xr:xl;for(let k=1;k<10;k++){const t=k/10;pts.push([xe+Math.sin(t*Math.PI)*(ltr?-1:1)*Math.min(14,amp)*(n>3?1:0),y-gap*t])}}}
+  const L=[0];for(let i=1;i<pts.length;i++)L.push(L[i-1]+Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]));
+  const total=L[L.length-1];const pointAt=d=>{let i=L.findIndex(v=>v>=d);if(i<=0)return pts[0].slice();const f=(d-L[i-1])/(L[i]-L[i-1]);return[pts[i-1][0]+(pts[i][0]-pts[i-1][0])*f,pts[i-1][1]+(pts[i][1]-pts[i-1][1])*f]};
+  const obs=[];const no=n<3?0:n<5?2:n<7?4:6;
+  for(let i=0;i<no;i++){const d=total*(.15+.7*(i+.5)/no),p=pointAt(d);
+    if(n>=6&&i%2===1)obs.push({k:'dot',x:p[0],y:p[1],a:R()*6,sp:1.6+R(),rng:hw*.9,dir:R()<.5?0:1});
+    else obs.push({k:'bar',x:p[0],y:p[1],a:R()*6,sp:(R()<.5?-1:1)*(.9+n*.12),len:hw*1.05})}
+  const cps=n>=4?[pointAt(total*.5)]:[];
+  return {n,hw,pts,obs,cps,total}}
+function size(){const r=cv.getBoundingClientRect(),d=window.devicePixelRatio||1;W=r.width;H=r.height;cv.width=W*d;cv.height=H*d;sc=Math.min(W/LW,H/LH);ox=(W-LW*sc)/2;oy=(H-LH*sc)/2;x.setTransform(d*sc,0,0,d*sc,d*ox,d*oy);draw(performance.now())}
+function segDist(px,py,ax,ay,bx,by){const dx=bx-ax,dy=by-ay,l=dx*dx+dy*dy;let t=l?((px-ax)*dx+(py-ay)*dy)/l:0;t=clamp(t,0,1);return Math.hypot(px-ax-dx*t,py-ay-dy*t)}
+function pathDist(px,py){let m=1e9;const P=S.L.pts;for(let i=1;i<P.length;i++){const a=P[i-1],b=P[i];if(Math.abs(a[0]-px)>60&&Math.abs(b[0]-px)>60)continue;const d=segDist(px,py,a[0],a[1],b[0],b[1]);if(d<m)m=d}return m}
+function obsHit(px,py,now){const t=(now-S.t0)/1000;for(const o of S.L.obs){if(o.k==='bar'){const a=o.a+o.sp*t,c=Math.cos(a)*o.len,s=Math.sin(a)*o.len;if(segDist(px,py,o.x-c,o.y-s,o.x+c,o.y+s)<TIP+3)return true}
+  else{const p=dotPos(o,t);if(Math.hypot(px-p[0],py-p[1])<TIP+6)return true}}return false}
+function dotPos(o,t){const s=Math.sin(o.a+o.sp*t)*o.rng;return o.dir?[o.x,o.y+s]:[o.x+s,o.y]}
+function load(n){S={n,L:build(n),tip:null,started:false,t0:performance.now(),start:0,time:0,miss:0,cp:-1,state:'play',flash:0};
+  S.tip=S.L.pts[0].slice();$('#ir-st').textContent=n;hud();overlay(null);cancelAnimationFrame(raf);raf=requestAnimationFrame(loop);Save.touch({game:'iraira'})}
+function hud(){$('#ir-miss').textContent=S?S.miss:0;$('#ir-time').textContent=((S&&S.started?S.time:0)/1000).toFixed(1)+'秒'}
+function msg(t){$('#ir-msg').textContent=t}
+function fail(){S.miss++;S.flash=performance.now();Sfx.play('ng');if(navigator.vibrate)navigator.vibrate(120);
+  const back=S.cp>=0?S.L.cps[S.cp]:S.L.pts[0];S.tip=back.slice();msg(S.cp>=0?'ビリッ！ 中間地点から':'ビリッ！ スタートから');hud();drag=null}
+function move(dx,dy,now){if(S.state!=='play')return;const steps=Math.ceil(Math.hypot(dx,dy)/1.5);
+  if(!S.started&&steps){S.started=true;S.start=now-S.time;msg('ゴールまで壁にさわらずに')}
+  for(let i=0;i<steps;i++){S.tip[0]+=dx/steps;S.tip[1]+=dy/steps;
+    if(pathDist(S.tip[0],S.tip[1])>S.L.hw-TIP||obsHit(S.tip[0],S.tip[1],now))return fail();
+    S.L.cps.forEach((c,k)=>{if(k>S.cp&&Math.hypot(S.tip[0]-c[0],S.tip[1]-c[1])<S.L.hw){S.cp=k;Sfx.play('coin');msg('中間地点！')}});
+    const g=S.L.pts[S.L.pts.length-1];if(Math.hypot(S.tip[0]-g[0],S.tip[1]-g[1])<S.L.hw*.8)return clear()}}
+function clear(){S.state='clear';const t=S.time,n=S.n;const prev=bests[n];const nb=!prev||t<prev.t;if(nb){bests[n]={t,miss:S.miss};store.set('best',bests)}
+  if(n>=unlocked&&n<NST){unlocked=n+1;store.set('stage',unlocked)}store.set('plays',(store.get('plays',0)||0)+1);Sfx.play('clear');draw(performance.now());
+  overlay(`<h3>ステージ${n} クリア！</h3><div class="big">${(t/1000).toFixed(1)}秒</div><p>ミス ${S.miss}回${nb?'<br>ベスト更新！':`<br>ベスト ${(prev.t/1000).toFixed(1)}秒`}</p>${n<NST?'<p style="color:#FFE58A">タップで次のステージ</p>':'<p style="color:#FFE58A">全ステージクリア！タップでステージ選択</p>'}`,()=>n<NST?load(n+1):menu())}
+function overlay(html,cb){$('#ir-box').querySelectorAll('.ir-over').forEach(o=>o.remove());if(!html)return;const o=document.createElement('div');o.className='ir-over';o.innerHTML=html;$('#ir-box').appendChild(o);if(cb)setTimeout(()=>o.onclick=cb,400);return o}
+function menu(){if(S)S.state='menu';let b='';for(let i=1;i<=NST;i++){const r=bests[i];b+=`<button type="button" data-s="${i}" ${i>unlocked?'disabled':''}>${i}<small>${r?(r.t/1000).toFixed(1)+'秒':i>unlocked?'🔒':'—'}</small></button>`}
+  const o=overlay(`<h3>イライラ棒</h3><p>指をどこでもいいのですべらせると<br>先の玉が同じだけ動く。壁にさわったらビリッ！</p><p>赤い棒・玉にも当たらないように</p><div class="ir-stg">${b}</div><p style="font-size:12px;opacity:.8">ステージ4からは中間地点あり</p>`);
+  o.querySelectorAll('[data-s]').forEach(e=>e.onclick=ev=>{ev.stopPropagation();load(+e.dataset.s)})}
+function loop(now){if(!S||S.state!=='play')return;if(S.started)S.time=now-S.start;
+  if(S.started&&obsHit(S.tip[0],S.tip[1],now))fail();hud();draw(now);raf=requestAnimationFrame(loop)}
+function draw(now){x.save();x.setTransform(1,0,0,1,0,0);x.fillStyle='#2A2F45';x.fillRect(0,0,cv.width,cv.height);x.restore();if(!S)return;
+  const P=S.L.pts,hw=S.L.hw;const line=(w,c)=>{x.strokeStyle=c;x.lineWidth=w;x.lineJoin='round';x.lineCap='round';x.beginPath();P.forEach((p,i)=>i?x.lineTo(p[0],p[1]):x.moveTo(p[0],p[1]));x.stroke()};
+  const fl=now-S.flash<250;line(hw*2+8,fl?'#FF5A4E':'#C9A24A');line(hw*2,'#F6F1E3');line(2,'rgba(201,162,74,.25)');
+  const s=P[0],g=P[P.length-1];x.fillStyle='#5BC46A';x.beginPath();x.arc(s[0],s[1],hw*.8,0,7);x.fill();x.fillStyle='#F05A50';x.beginPath();x.arc(g[0],g[1],hw*.8,0,7);x.fill();
+  x.fillStyle='#fff';x.font='900 11px "Zen Kaku Gothic New",sans-serif';x.textAlign='center';x.textBaseline='middle';x.fillText('START',s[0],s[1]);x.fillText('GOAL',g[0],g[1]);
+  S.L.cps.forEach((c,k)=>{x.fillStyle=k<=S.cp?'#5BC46A':'rgba(91,196,106,.35)';x.fillRect(c[0]-3,c[1]-hw,6,hw*2)});
+  const t=(now-S.t0)/1000;for(const o of S.L.obs){x.fillStyle='#D2433A';x.strokeStyle='#D2433A';
+    if(o.k==='bar'){const a=o.a+o.sp*t,c=Math.cos(a)*o.len,sn=Math.sin(a)*o.len;x.lineWidth=5;x.lineCap='round';x.beginPath();x.moveTo(o.x-c,o.y-sn);x.lineTo(o.x+c,o.y+sn);x.stroke();x.fillStyle='#7A1E18';x.beginPath();x.arc(o.x,o.y,3.5,0,7);x.fill()}
+    else{const p=dotPos(o,t);x.beginPath();x.arc(p[0],p[1],6,0,7);x.fill()}}
+  const [tx,ty]=S.tip;x.strokeStyle='rgba(43,47,69,.5)';x.lineWidth=1;x.beginPath();x.arc(tx,ty,TIP+3,0,7);x.stroke();
+  x.fillStyle=fl?'#FF5A4E':'#2F63D3';x.beginPath();x.arc(tx,ty,TIP,0,7);x.fill();x.fillStyle='rgba(255,255,255,.7)';x.beginPath();x.arc(tx-1.5,ty-1.5,1.6,0,7);x.fill()}
+let drag=null;
+cv.addEventListener('pointerdown',e=>{e.preventDefault();drag={x:e.clientX,y:e.clientY,id:e.pointerId};try{cv.setPointerCapture(e.pointerId)}catch(_){}});
+cv.addEventListener('pointermove',e=>{if(!drag||e.pointerId!==drag.id||!S)return;const dx=(e.clientX-drag.x)/sc,dy=(e.clientY-drag.y)/sc;drag.x=e.clientX;drag.y=e.clientY;move(dx,dy,performance.now())});
+const up=()=>{drag=null};cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);
+$('#ir-menu').onclick=menu;
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&S&&S.state==='play')drag=null});
+new ResizeObserver(size).observe($('#ir-box'));S=null;size();
+S={n:1,L:build(Math.min(unlocked,NST)),tip:[0,0],t0:performance.now(),state:'menu',flash:0,miss:0,cp:-1};S.tip=S.L.pts[0].slice();draw(performance.now());menu();
+if(window.__irdebug!==undefined||/debug=1/.test(location.search))window.__ir={get S(){return S},move,load};
+});
+</script>
+<script>regSW('../sw.js')</script>
+</body>
+</html>

@@ -64,7 +64,7 @@ function step(now){if(S.q.length)S.dir=S.q.shift();const h=S.body[0],nh={x:h.x+S
 function hud(){$('#sn-len').textContent=S.body.length;$('#sn-score').textContent=S.score}
 function die(){state='over';Sfx.play('hit');const nb=S.score>(best[sp]||0);if(nb){best[sp]=S.score;store.set('best',best)}showBest();draw();
   overlay(`<h3>ゲームオーバー</h3><div class="big">${S.score}点</div><p>${nb?'ベスト更新！<br>':''}長さ ${S.body.length}</p><p style="color:#FFE58A">タップでもう一回</p>`,start)}
-function loop(now){if(state!=='play')return;const rate=SPD[sp]+Math.min(4,S.eaten*.08);acc+=(now-last)/1000;last=now;
+function loop(now){if(state!=='play')return;const rate=SPD[sp]+Math.min(4,S.eaten*.08);acc+=Math.max(0,(now-last)/1000);last=now;
   while(acc>=1/rate&&state==='play'){acc-=1/rate;step(now)}draw();raf=requestAnimationFrame(loop)}
 function draw(){const w=cv.clientWidth,c=w/N;if(!w||!S)return;ctx.fillStyle='#CFE6A8';ctx.fillRect(0,0,w,w);
   ctx.fillStyle='#C2DC98';for(let y=0;y<N;y++)for(let x=0;x<N;x++)if((x+y)%2)ctx.fillRect(x*c,y*c,c,c);

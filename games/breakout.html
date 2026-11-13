@@ -91,7 +91,7 @@ function step(dt){const P=G.pad,now=performance.now();P.w=now<G.wideUntil?112:72
   hud()}
 function over(){G.state='over';cancelAnimationFrame(raf);const nb=G.score>best;if(nb){best=G.score;store.set('best',best)}hud();Sfx.play(nb?'clear':'lose');
   overlay(`<h3>ゲームオーバー</h3><div class="big">${G.score}点</div><p>${nb?'ベスト更新！<br>':''}ステージ${G.stage+1}まで</p><p style="color:#FFE58A">タップでもう一回</p>`,start)}
-function loop(now){if(!G||G.state!=='play')return;const dt=Math.min(.033,(now-last)/1000);last=now;step(dt);draw();if(G.state==='play')raf=requestAnimationFrame(loop)}
+function loop(now){if(!G||G.state!=='play')return;const dt=clamp((now-last)/1000,0,.033);last=now;step(dt);draw();if(G.state==='play')raf=requestAnimationFrame(loop)}
 function draw(){x.fillStyle='#18264A';x.fillRect(0,0,W,H);x.fillStyle='rgba(255,255,255,.04)';for(let i=0;i<W;i+=24)x.fillRect(i,0,1,H);
   if(!G)return;
   for(const b of G.bricks){if(b.hp<=0)continue;x.fillStyle=b.max>1?(b.hp===3?'#B8C2D6':b.hp===2?'#8F9BB3':b.col):b.col;x.beginPath();x.roundRect(b.x,b.y,b.w,b.h,4);x.fill();
