@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ペンギン飛ばし｜すきま脳トレ箱</title>
+<meta name="theme-color" content="#EBF0F6">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icons/icon-192.png">
+<link rel="apple-touch-icon" href="../icons/icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap">
+<link rel="stylesheet" href="../common/base.css">
+<style>
+.pg-hud{display:flex;justify-content:space-between;align-items:baseline;font-weight:700;font-size:13px;font-variant-numeric:tabular-nums;padding:0 2px 8px}
+.pg-hud b{font:400 22px var(--display)}
+.pg-box{position:relative;flex:1;min-height:0;margin-bottom:12px;border:2.5px solid var(--ink);border-radius:12px;overflow:hidden;background:#BFE0F7}
+.pg-box canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none}
+.pg-over{position:absolute;inset:0;background:rgba(10,16,32,.55);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center;padding:16px}
+.pg-over h3{font:400 26px var(--display);margin:0}.pg-over p{margin:0;font-weight:700;line-height:1.6}.pg-over .big{font:400 42px var(--display)}
+</style>
+</head>
+<body>
+<div id="app">
+<section class="view">
+  <header class="bar"><a class="back" href="../index.html">‹ 戻る</a><h2>ペンギン飛ばし</h2><span class="timer" id="pg-best">ベスト 0m</span></header>
+  <div class="pg-hud"><span>きょり <b id="pg-dist">0</b>m</span><span id="pg-flap"></span><span id="pg-sub"></span></div>
+  <div class="pg-box" id="pg-box"><canvas id="pg-cv"></canvas></div>
+</section>
+</div>
+<div id="layer"></div>
+<script src="../common/save.js"></script>
+<script src="../common/ui.js"></script>
+<script src="../common/sfx.js"></script>
+<script>
+Save.ready.then(()=>{
+const store=makeStore('pg_');
+const cv=$('#pg-cv'),x=cv.getContext('2d');let W=360,H=520;
+const PX=12,GY=()=>H*.8,HIT={x:70};   // 1m = 12px
+let G=null,raf=0,last=0,best=store.get('best',0);
+function size(){const r=cv.getBoundingClientRect(),d=window.devicePixelRatio||1;W=r.width;H=r.height;cv.width=W*d;cv.height=H*d;x.setTransform(d,0,0,d,0,0);draw()}
+function overlay(html,cb){$('#pg-box').querySelectorAll('.pg-over').forEach(o=>o.remove());if(!html)return;const o=document.createElement('div');o.className='pg-over';o.innerHTML=html;$('#pg-box').appendChild(o);if(cb)setTimeout(()=>o.onclick=cb,400)}
+function title(){overlay(`<h3>ペンギン飛ばし</h3><p>落ちてくるペンギンを、ちょうどいい高さでタップして打つ！</p><p>飛んでいる間に1回だけ、タップで羽ばたける<br>バネに当たると大ジャンプ、雪山で減速</p><p>ベスト ${best}m</p><p style="color:#FFE58A">タップでスタート</p>`,start)}
+function makeWorld(){const o=[];let wx=300;while(wx<20000){wx+=rnd(220,520);o.push({x:wx,k:Math.random()<.45?'spring':'mound'})}return o}
+function start(){G={st:'drop',p:{x:HIT.x,y:-30,vx:0,vy:0,rot:0},cam:0,flap:1,objs:makeWorld(),swing:0,tr:[]};overlay(null);last=performance.now();cancelAnimationFrame(raf);raf=requestAnimationFrame(loop);hud()}
+function hud(){$('#pg-best').textContent=`ベスト ${best}m`;$('#pg-dist').textContent=G?Math.max(0,Math.round((G.p.x-HIT.x)/PX)):0;
+  $('#pg-flap').textContent=G&&G.st==='fly'?(G.flap?'羽ばたき あと1回':'羽ばたき 使用済み'):'';$('#pg-sub').textContent=G&&G.msg?G.msg:''}
+function tap(){if(!G)return;
+  if(G.st==='drop'){G.swing=performance.now();const ideal=GY()-110,off=G.p.y-ideal,a=Math.abs(off);Sfx.play('jump');
+    if(a>90){G.msg='からぶり…';return}
+    const q=a<10?1:a<25?.9:a<45?.72:.5,ang=-(0.62+clamp(off/90,-1,1)*.32);const pw=(560+q*620);
+    G.p.vx=Math.cos(ang)*pw;G.p.vy=Math.sin(ang)*pw;G.st='fly';Sfx.play('punch');G.msg=q===1?'ジャストミート！':q>=.9?'ナイス！':q>=.72?'いい当たり':'当たりが浅い';return}
+  if(G.st==='fly'&&G.flap){G.flap=0;G.p.vy=Math.min(G.p.vy,0)-260;G.p.vx+=60;Sfx.play('coin');G.msg='パタパタ！'}}
+function step(dt){const p=G.p,gy=GY();
+  if(G.st==='drop'){p.vy+=720*dt;p.y+=p.vy*dt;if(p.y>gy-12){G.st='end';G.msg='落ちちゃった';return end(true)}return}
+  p.vy+=640*dt;p.vx*=1-.04*dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.rot+=p.vx*dt*.02;
+  for(const o of G.objs){if(o.used||Math.abs(o.x-p.x)>22)continue;if(p.y>gy-30){o.used=true;
+    if(o.k==='spring'){p.vy=-Math.max(380,Math.abs(p.vy)*1.05+180);p.vx+=90;Sfx.play('jump');G.msg='ボヨーン！'}else{p.vx*=.55;p.vy=-Math.abs(p.vy)*.3;Sfx.play('hit');G.msg='雪山にずぼっ'}}}
+  if(p.y>gy-12){p.y=gy-12;if(Math.abs(p.vy)>120){p.vy=-Math.abs(p.vy)*.42;p.vx*=.8;Sfx.play('tap')}else{p.vy=0;p.vx-=Math.sign(p.vx)*Math.min(Math.abs(p.vx),420*dt);G.st='slide'}}
+  if(G.st==='slide'){if(p.y<gy-12.5)G.st='fly';if(Math.abs(p.vx)<4){p.vx=0;return end(false)}}
+  G.cam=Math.max(0,p.x-W*.35);G.tr.push([p.x,p.y]);if(G.tr.length>40)G.tr.shift()}
+function end(fail){G.st='end';cancelAnimationFrame(raf);draw();const d=Math.max(0,Math.round((G.p.x-HIT.x)/PX));const nb=d>best;if(nb){best=d;store.set('best',best)}
+  const h=store.get('hist',[]);h.unshift(d);store.set('hist',h.slice(0,20));store.set('plays',(store.get('plays',0)||0)+1);hud();Sfx.play(nb?'clear':fail?'ng':'ok');
+  overlay(`<h3>${fail?'からぶり':'記録'}</h3><div class="big">${d}m</div><p>${nb?'ベスト更新！':''}</p><p style="color:#FFE58A">タップでもう一回</p>`,start)}
+function loop(now){if(!G||G.st==='end')return;const dt=Math.min(.033,(now-last)/1000);last=now;step(dt);hud();draw();if(G.st!=='end')raf=requestAnimationFrame(loop)}
+function penguin(px,py,rot){x.save();x.translate(px,py);x.rotate(rot);
+  x.fillStyle='#2B2B33';x.beginPath();x.ellipse(0,0,11,14,0,0,7);x.fill();x.fillStyle='#fff';x.beginPath();x.ellipse(2,3,7,10,0,0,7);x.fill();
+  x.fillStyle='#2B2B33';x.beginPath();x.arc(3,-7,1.8,0,7);x.fill();x.fillStyle='#F2A23A';x.beginPath();x.moveTo(8,-6);x.lineTo(15,-4);x.lineTo(8,-2);x.fill();
+  x.fillStyle='#F2A23A';x.fillRect(-6,12,5,3);x.fillRect(2,12,5,3);x.fillStyle='#D2433A';x.fillRect(-9,-12,18,4);x.restore()}
+function draw(){const gy=GY(),cam=G?G.cam:0;
+  const sky=x.createLinearGradient(0,0,0,gy);sky.addColorStop(0,'#8FC8F0');sky.addColorStop(1,'#E8F4FC');x.fillStyle=sky;x.fillRect(0,0,W,H);
+  x.fillStyle='#CFE3F2';for(let i=-1;i<6;i++){const mx=i*180-(cam*.3)%180;x.beginPath();x.moveTo(mx,gy);x.lineTo(mx+90,gy-90);x.lineTo(mx+180,gy);x.fill()}
+  x.fillStyle='#FFFFFF';x.fillRect(0,gy,W,H-gy);x.fillStyle='#DDEAF5';x.fillRect(0,gy,W,4);
+  x.fillStyle='#5B6886';x.font='700 11px "Zen Kaku Gothic New",sans-serif';x.textAlign='center';
+  for(let m=50;m<2000;m+=50){const sx=HIT.x+m*PX-cam;if(sx<-40||sx>W+40)continue;x.fillRect(sx-1,gy,2,14);x.fillText(m+'m',sx,gy+28)}
+  if(best>0){const sx=HIT.x+best*PX-cam;if(sx>-20&&sx<W+20){x.fillStyle='#D2433A';x.fillRect(sx-1,gy-50,2,50);x.beginPath();x.moveTo(sx,gy-50);x.lineTo(sx+26,gy-43);x.lineTo(sx,gy-36);x.fill();x.fillStyle='#fff';x.font='900 9px "Zen Kaku Gothic New",sans-serif';x.fillText('ベスト',sx+11,gy-40)}}
+  if(G)for(const o of G.objs){const sx=o.x-cam;if(sx<-40||sx>W+40)continue;
+    if(o.k==='spring'){x.fillStyle='#9AA6B8';x.fillRect(sx-14,gy-6,28,6);x.strokeStyle='#5B6886';x.lineWidth=3;x.beginPath();for(let i=0;i<4;i++){x.lineTo(sx+(i%2?8:-8),gy-8-i*5)}x.stroke();x.fillStyle='#D2433A';x.fillRect(sx-14,gy-28,28,6)}
+    else{x.fillStyle='#F4F8FC';x.strokeStyle='#C2CDDD';x.lineWidth=2;x.beginPath();x.ellipse(sx,gy,26,18,0,Math.PI,0);x.fill();x.stroke()}}
+  // 打つ人（雪男風のオリジナル）
+  const bx=HIT.x-34-cam;if(bx>-60){x.fillStyle='#fff';x.strokeStyle='#2B2B33';x.lineWidth=2;x.beginPath();x.ellipse(bx,gy-30,20,30,0,0,7);x.fill();x.stroke();
+    x.fillStyle='#2B2B33';x.beginPath();x.arc(bx+7,gy-44,2.2,0,7);x.fill();
+    const sw=G&&G.swing?Math.min(1,(performance.now()-G.swing)/120):0;x.save();x.translate(bx+14,gy-36);x.rotate(-1.9+sw*2.2);x.fillStyle='#8A5A36';x.beginPath();x.roundRect(-3,-6,58,8,4);x.fill();x.restore()}
+  if(G){x.strokeStyle='rgba(43,43,51,.18)';x.lineWidth=2;x.beginPath();G.tr.forEach(([a,b],i)=>i?x.lineTo(a-cam,b):x.moveTo(a-cam,b));x.stroke();
+    if(G.st==='drop'){x.strokeStyle='rgba(210,67,58,.5)';x.setLineDash([4,4]);x.beginPath();x.moveTo(HIT.x-25,gy-110);x.lineTo(HIT.x+25,gy-110);x.stroke();x.setLineDash([])}
+    penguin(G.p.x-cam,G.p.y,G.p.rot)}}
+cv.addEventListener('pointerdown',e=>{e.preventDefault();tap()});
+document.addEventListener('keydown',e=>{if(e.code==='Space'){e.preventDefault();tap()}});
+new ResizeObserver(size).observe($('#pg-box'));Save.touch({game:'penguin'});hud();size();title();
+});
+</script>
+<script>regSW('../sw.js')</script>
+</body>
+</html>

@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ブロック崩し｜すきま脳トレ箱</title>
+<meta name="theme-color" content="#EBF0F6">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="icon" href="../icons/icon-192.png">
+<link rel="apple-touch-icon" href="../icons/icon-180.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Kaku+Gothic+New:wght@400;500;700;900&display=swap">
+<link rel="stylesheet" href="../common/base.css">
+<style>
+.bo-hud{display:flex;justify-content:space-between;align-items:baseline;font-weight:700;font-size:13px;font-variant-numeric:tabular-nums;padding:0 2px 8px}
+.bo-hud b{font:400 20px var(--display)}
+.bo-box{position:relative;flex:1;min-height:0;margin-bottom:12px;border:2.5px solid var(--ink);border-radius:12px;overflow:hidden;background:#18264A}
+.bo-box canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none}
+.bo-over{position:absolute;inset:0;background:rgba(10,16,32,.6);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center;padding:16px}
+.bo-over h3{font:400 26px var(--display);margin:0}.bo-over p{margin:0;font-weight:700;line-height:1.6}.bo-over .big{font:400 40px var(--display)}
+</style>
+</head>
+<body>
+<div id="app">
+<section class="view">
+  <header class="bar"><a class="back" href="../index.html">‹ 戻る</a><h2>ブロック崩し</h2><button class="btn" id="bo-pause" type="button">一時停止</button><span class="timer" id="bo-best">ベスト 0</span></header>
+  <div class="bo-hud"><span>ステージ <b id="bo-stage">1</b></span><span id="bo-lives"></span><span>点数 <b id="bo-score">0</b></span></div>
+  <div class="bo-box" id="bo-box"><canvas id="bo-cv"></canvas></div>
+</section>
+</div>
+<div id="layer"></div>
+<script src="../common/save.js"></script>
+<script src="../common/ui.js"></script>
+<script src="../common/sfx.js"></script>
+<script>
+Save.ready.then(()=>{
+const store=makeStore('bo_');
+const cv=$('#bo-cv'),x=cv.getContext('2d');
+const W=360,COLS=12;let H=540,scale=1;
+// ステージ（.=なし 1=ふつう 2=かたい 3=とてもかたい *=アイテム入り）
+const STAGES=[
+ ['............','111111111111','111111111111','11111*111111','111111111111','111111*11111'],
+ ['1..........1','11........11','111..**..111','1111....1111','11111111111','*1111111111*','222222222222'],
+ ['....1111....','...111111...','..11*22*11..','.1112222111.','111122221111','.1111111111.','..11111111..','...111111...'],
+ ['2.2.2.2.2.2.','.1.1.1.1.1.1','1.1.1*1.1.1.','.1.1.1.1.1.1','2.2.2.2.2.2.','.*.1.1.1.1.*'],
+ ['333......333','3*2......2*3','322111111223','.2111111112.','..11111111..','...222222...'],
+ ['111111111111','1..........1','1.22222222.1','1.2*3333*2.1','1.22222222.1','1..........1','111111111111'],
+ ['*1111..1111*','122221122221','123321123321','122221122221','111111111111'],
+ ['....3333....','...322223...','..32111123..','.321*11*123.','.321111.123.','..32111123..','...322223...','....3333....'],
+ ['121212121212','212121212121','1*1212121*12','212121212121','333333333333','2.2.2.2.2.2.'],
+ ['3*3*3*3*3*3*','222222222222','222222222222','111111111111','111111111111','111111111111','111111111111'],
+];
+const ROWCOL=['#E8483A','#F28C38','#F2C431','#5CC86A','#4FA3E8','#8A6FE0','#EE8FB3','#E8483A','#F28C38','#F2C431'];
+const ITEMS={W:{c:'#4FA3E8',t:'ワイド'},M:{c:'#F2C431',t:'マルチ'},S:{c:'#5CC86A',t:'スロー'},L:{c:'#EE8FB3',t:'＋1'}};
+let G=null,raf=0,last=0,best=store.get('best',0);
+function size(){const r=cv.getBoundingClientRect(),d=window.devicePixelRatio||1;cv.width=r.width*d;cv.height=r.height*d;scale=r.width/W;H=r.height/scale;x.setTransform(d*scale,0,0,d*scale,0,0);if(G){G.pad.y=H-36}draw()}
+function loadStage(n){const L=STAGES[n%STAGES.length],bw=W/COLS,bh=16,top=56;G.bricks=[];
+  L.forEach((row,ry)=>[...row].forEach((ch,cx)=>{if(ch==='.')return;const hp=ch==='2'?2:ch==='3'?3:1;
+    G.bricks.push({x:cx*bw+1.5,y:top+ry*(bh+3),w:bw-3,h:bh,hp,max:hp,col:ROWCOL[ry%ROWCOL.length],item:ch==='*'?'MWSL'[Math.random()*4|0]:(Math.random()<.06?'MWS'[Math.random()*3|0]:null)})}));
+  G.stage=n;G.items=[];G.balls=[];newBall();G.pad.w=72;G.wideUntil=0;G.slowUntil=0}
+function newBall(){G.balls=[{x:G.pad.x,y:G.pad.y-9,vx:0,vy:0,r:6,stuck:true}]}
+function speed(){return (300+G.stage*22)*(performance.now()<G.slowUntil?.7:1)}
+function start(){G={score:0,lives:3,pad:{x:W/2,y:H-36,w:72,h:10},stage:0};loadStage(0);overlay(null);G.state='play';last=performance.now();cancelAnimationFrame(raf);raf=requestAnimationFrame(loop);hud();Sfx.play('ok')}
+function launch(){for(const b of G.balls)if(b.stuck){b.stuck=false;const a=-Math.PI/2+(Math.random()-.5)*.6;const s=speed();b.vx=Math.cos(a)*s;b.vy=Math.sin(a)*s}}
+function hud(){$('#bo-stage').textContent=G?G.stage+1:1;$('#bo-score').textContent=G?G.score:0;$('#bo-lives').textContent=G?'●'.repeat(Math.max(0,G.lives)):'';$('#bo-best').textContent=`ベスト ${best}`}
+function overlay(html,cb){$('#bo-box').querySelectorAll('.bo-over').forEach(o=>o.remove());if(!html)return;const o=document.createElement('div');o.className='bo-over';o.innerHTML=html;$('#bo-box').appendChild(o);if(cb)setTimeout(()=>o.onclick=cb,350)}
+function title(){overlay(`<h3>ブロック崩し</h3><p>指を左右に動かしてバーを操作<br>タップでボールを打ち出す</p><p>光るブロックからアイテムが出る<br>ワイド・マルチ・スロー・＋1</p><p>ベスト ${best}点（ステージ${store.get('stage',1)}まで）</p><p style="color:#FFE58A">タップでスタート</p>`,start)}
+function step(dt){const P=G.pad,now=performance.now();P.w=now<G.wideUntil?112:72;
+  for(const b of G.balls){
+    if(b.stuck){b.x=P.x;b.y=P.y-9;continue}
+    const s=speed(),cur=Math.hypot(b.vx,b.vy)||1;b.vx*=s/cur;b.vy*=s/cur;
+    const n=Math.ceil(s*dt/4);for(let k=0;k<n;k++){
+      b.x+=b.vx*dt/n;b.y+=b.vy*dt/n;
+      if(b.x<b.r){b.x=b.r;b.vx=Math.abs(b.vx)}if(b.x>W-b.r){b.x=W-b.r;b.vx=-Math.abs(b.vx)}if(b.y<b.r){b.y=b.r;b.vy=Math.abs(b.vy)}
+      if(b.vy>0&&b.y+b.r>=P.y&&b.y+b.r<=P.y+P.h+8&&b.x>P.x-P.w/2-b.r&&b.x<P.x+P.w/2+b.r){const t=clamp((b.x-P.x)/(P.w/2),-1,1),a=-Math.PI/2+t*1.05;b.vx=Math.cos(a)*s;b.vy=Math.sin(a)*s;b.y=P.y-b.r;Sfx.play('tap')}
+      for(const br of G.bricks){if(br.hp<=0)continue;if(b.x+b.r<br.x||b.x-b.r>br.x+br.w||b.y+b.r<br.y||b.y-b.r>br.y+br.h)continue;
+        const ox=Math.min(b.x+b.r-br.x,br.x+br.w-(b.x-b.r)),oy=Math.min(b.y+b.r-br.y,br.y+br.h-(b.y-b.r));
+        if(ox<oy){b.vx=-b.vx;b.x+=b.vx>0?ox:-ox}else{b.vy=-b.vy;b.y+=b.vy>0?oy:-oy}
+        br.hp--;G.score+=br.hp<=0?10*br.max:2;Sfx.play(br.hp<=0?'place':'tap');
+        if(br.hp<=0&&br.item)G.items.push({x:br.x+br.w/2,y:br.y,k:br.item});break}
+    }}
+  G.balls=G.balls.filter(b=>b.y<H+20);
+  for(const it of G.items){it.y+=140*dt;if(it.y>P.y-6&&it.y<P.y+P.h+6&&Math.abs(it.x-P.x)<P.w/2+12){it.got=true;Sfx.play('coin');
+    if(it.k==='W')G.wideUntil=now+12000;if(it.k==='S')G.slowUntil=now+10000;if(it.k==='L')G.lives=Math.min(5,G.lives+1);
+    if(it.k==='M'){const src=G.balls.find(b=>!b.stuck)||G.balls[0];if(src){for(const a of[-.5,.5]){const s=speed(),ang=Math.atan2(src.vy||-1,src.vx||0)+a;G.balls.push({x:src.x,y:src.y,vx:Math.cos(ang)*s,vy:Math.sin(ang)*s,r:6,stuck:false})}}}}}
+  G.items=G.items.filter(i=>!i.got&&i.y<H+20);
+  if(!G.balls.length){G.lives--;Sfx.play('ng');hud();if(G.lives<0)return over();newBall()}
+  if(G.bricks.every(b=>b.hp<=0)){G.score+=200+G.lives*50;Sfx.play('clear');const n=G.stage+1;store.set('stage',Math.max(store.get('stage',1),n+1));
+    G.state='clear';overlay(`<h3>ステージ${n} クリア！</h3><p>ボーナス +${200+G.lives*50}</p><p style="color:#FFE58A">タップで次のステージ</p>`,()=>{overlay(null);loadStage(n);G.state='play';last=performance.now();raf=requestAnimationFrame(loop)});hud();return}
+  hud()}
+function over(){G.state='over';cancelAnimationFrame(raf);const nb=G.score>best;if(nb){best=G.score;store.set('best',best)}hud();Sfx.play(nb?'clear':'lose');
+  overlay(`<h3>ゲームオーバー</h3><div class="big">${G.score}点</div><p>${nb?'ベスト更新！<br>':''}ステージ${G.stage+1}まで</p><p style="color:#FFE58A">タップでもう一回</p>`,start)}
+function loop(now){if(!G||G.state!=='play')return;const dt=Math.min(.033,(now-last)/1000);last=now;step(dt);draw();if(G.state==='play')raf=requestAnimationFrame(loop)}
+function draw(){x.fillStyle='#18264A';x.fillRect(0,0,W,H);x.fillStyle='rgba(255,255,255,.04)';for(let i=0;i<W;i+=24)x.fillRect(i,0,1,H);
+  if(!G)return;
+  for(const b of G.bricks){if(b.hp<=0)continue;x.fillStyle=b.max>1?(b.hp===3?'#B8C2D6':b.hp===2?'#8F9BB3':b.col):b.col;x.beginPath();x.roundRect(b.x,b.y,b.w,b.h,4);x.fill();
+    x.fillStyle='rgba(255,255,255,.28)';x.fillRect(b.x+3,b.y+2,b.w-6,3);if(b.item){x.strokeStyle='#fff';x.lineWidth=1.5;x.strokeRect(b.x+1.5,b.y+1.5,b.w-3,b.h-3)}
+    if(b.max>1&&b.hp<b.max){x.strokeStyle='rgba(0,0,0,.4)';x.lineWidth=1.5;x.beginPath();x.moveTo(b.x+b.w*.3,b.y+2);x.lineTo(b.x+b.w*.45,b.y+b.h-2);x.stroke()}}
+  for(const it of G.items){const I=ITEMS[it.k];x.fillStyle=I.c;x.beginPath();x.roundRect(it.x-18,it.y-8,36,16,8);x.fill();x.fillStyle='#18264A';x.font='900 10px "Zen Kaku Gothic New",sans-serif';x.textAlign='center';x.textBaseline='middle';x.fillText(I.t,it.x,it.y+1)}
+  const P=G.pad;x.fillStyle=performance.now()<G.wideUntil?'#4FA3E8':'#F2C431';x.beginPath();x.roundRect(P.x-P.w/2,P.y,P.w,P.h,5);x.fill();x.fillStyle='rgba(255,255,255,.5)';x.fillRect(P.x-P.w/2+4,P.y+2,P.w-8,2);
+  for(const b of G.balls){x.fillStyle='#fff';x.beginPath();x.arc(b.x,b.y,b.r,0,7);x.fill()}
+  if(G.balls.some(b=>b.stuck)&&G.state==='play'){x.fillStyle='rgba(255,255,255,.75)';x.font='700 13px "Zen Kaku Gothic New",sans-serif';x.textAlign='center';x.fillText('タップで打ち出す',W/2,H-70)}}
+let drag=null;
+cv.addEventListener('pointerdown',e=>{if(!G||G.state!=='play')return;e.preventDefault();drag={sx:e.clientX,px:G.pad.x,moved:false};try{cv.setPointerCapture(e.pointerId)}catch(_){}});
+cv.addEventListener('pointermove',e=>{if(!drag||!G)return;const dx=(e.clientX-drag.sx)/scale;if(Math.abs(dx)>3)drag.moved=true;G.pad.x=clamp(drag.px+dx*1.3,G.pad.w/2,W-G.pad.w/2)});
+cv.addEventListener('pointerup',()=>{if(drag&&!drag.moved&&G&&G.state==='play')launch();drag=null});
+document.addEventListener('keydown',e=>{if(!G||G.state!=='play')return;if(e.key==='ArrowLeft')G.pad.x=clamp(G.pad.x-24,G.pad.w/2,W-G.pad.w/2);if(e.key==='ArrowRight')G.pad.x=clamp(G.pad.x+24,G.pad.w/2,W-G.pad.w/2);if(e.code==='Space'){e.preventDefault();launch()}});
+function pause(){if(G&&G.state==='play'){G.state='paused';cancelAnimationFrame(raf);overlay('<h3>一時停止中</h3><p style="color:#FFE58A">タップで再開</p>',()=>{overlay(null);G.state='play';last=performance.now();raf=requestAnimationFrame(loop)})}}
+$('#bo-pause').onclick=pause;document.addEventListener('visibilitychange',()=>{if(document.hidden)pause()});
+new ResizeObserver(size).observe($('#bo-box'));Save.touch({game:'breakout'});hud();size();title();
+});
+</script>
+<script>regSW('../sw.js')</script>
+</body>
+</html>
