@@ -49,9 +49,11 @@ Save.ready.then(()=>{
 const store=makeStore('es_');
 const ITEMS={skey:{i:'🔑',n:'銀の鍵',d:'小さな銀色の鍵。'},light:{i:'🔦',n:'ライト',d:'小さな懐中電灯。暗いところを照らせる。'},memo:{i:'📜',n:'メモ',d:'「金庫の番号は 時計の中に」と書いてある。'},gkey:{i:'🗝️',n:'金の鍵',d:'ずっしり重い金色の鍵。'}};
 const WALLS=['ドアの壁','本棚の壁','机の壁','窓の壁'];
+let room=1;const RK=k=>room===1?k:k+room;
 let S=null,sel=null,view=0,zoom=null,tIv=0,tStart=0,dial=[0,0,0],books=[],best=store.get('best',null),clears=store.get('clears',0);
+function loadRoomRec(){best=store.get(RK('best'),null);clears=store.get(RK('clears'),0)}
 function fresh(){return {f:{},inv:[],wall:0,time:0}}
-function save(){if(!S||S.done)return;S.time=elapsed();store.set('save',S)}
+function save(){if(!S||S.done||!S.inv)return;S.time=elapsed();S.room=room;store.set(RK('save'),S)}
 function elapsed(){return S.time+(tStart?(performance.now()-tStart)/1000:0)}
 function clock(on){if(on&&!tStart){tStart=performance.now();tIv=setInterval(()=>$('#es-time').textContent=fmt(elapsed()),500)}if(!on&&tStart){S.time=elapsed();tStart=0;clearInterval(tIv)}$('#es-time').textContent=fmt(S?elapsed():0)}
 function msg(t){$('#es-msg').textContent=t}
@@ -59,6 +61,129 @@ function give(k){if(!S.inv.includes(k)){S.inv.push(k);Sfx.play('coin');invDraw()
 function invDraw(){const b=$('#es-inv');b.innerHTML='';for(let i=0;i<6;i++){const k=S&&S.inv[i];const e=document.createElement('button');e.type='button';
   if(k){e.textContent=ITEMS[k].i;e.setAttribute('aria-label',ITEMS[k].n);if(sel===k)e.classList.add('sel');e.onclick=()=>{sel=sel===k?null:k;msg(sel?`${ITEMS[k].n}：${ITEMS[k].d}（使う場所をタップ）`:'');invDraw()}}else e.disabled=true;b.appendChild(e)}}
 const has=k=>S.inv.includes(k),use=k=>sel===k;
+/* ---------- 部屋2：キッチン／部屋3：子ども部屋 ---------- */
+const ROOMS={
+ 1:{name:'書斎',walls:['ドアの壁','本棚の壁','机の壁','窓の壁'],start:'気がつくと、知らない書斎にいた…ドアから外に出よう'},
+ 2:{name:'キッチン',walls:['ドアの壁','冷蔵庫の壁','コンロの壁','流しの壁'],start:'今度はキッチンに閉じこめられた…ドアには数字のロックがある'},
+ 3:{name:'子ども部屋',walls:['ドアの壁','おもちゃ棚の壁','ベッドの壁','黒板の壁'],start:'おもちゃがいっぱいの子ども部屋。ドアには星の形の鍵穴がある'},
+};
+Object.assign(ITEMS,{
+ ice:{i:'🧊',n:'氷のかたまり',d:'中に小さな鍵がとじこめられている。'},
+ ckey:{i:'🔑',n:'小さな鍵',d:'戸棚の鍵みたいだ。'},
+ recipe:{i:'📋',n:'レシピカード',d:'「クッキー3まい・ケーキ1こ・プリン4こ」と書いてある。'},
+ battery:{i:'🔋',n:'でんち',d:'おもちゃ用のでんち。'},
+ hammer:{i:'🔨',n:'おもちゃのハンマー',d:'軽いけど、陶器ぐらいなら割れそう。'},
+ star:{i:'⭐',n:'星の鍵',d:'星の形の鍵。'},
+});
+const BG2='<rect width="360" height="300" fill="#E7F3EE"/><g fill="#d8ebe3">'+[...Array(9)].map((_,i)=>`<rect x="${i*40}" y="0" width="20" height="230"/>`).join('')+'</g><rect y="230" width="360" height="70" fill="#B9C3CE"/><rect y="228" width="360" height="6" fill="#8A93A6"/>';
+const BG3='<rect width="360" height="300" fill="#FDE7EF"/><g fill="#fbd3e2">'+[...Array(8)].map((_,i)=>`<circle cx="${20+i*46}" cy="${30+(i%2)*40}" r="6"/>`).join('')+'</g><rect y="230" width="360" height="70" fill="#C9A27A"/><rect y="228" width="360" height="6" fill="#A8794E"/>';
+function dialSvg(bg,label){let g=`<rect width="360" height="300" fill="${bg}"/><rect x="40" y="30" width="280" height="230" rx="14" fill="#E8EDF5" stroke="#2B2B33" stroke-width="5"/><text x="180" y="66" font-size="16" font-weight="900" text-anchor="middle" fill="#18264A">${label}</text>`;
+  dial.forEach((v,i)=>{const cx=110+i*70;g+=`<g data-hs="dial-${i}"><rect x="${cx-28}" y="90" width="56" height="80" rx="10" fill="#fff" stroke="#2B2B33" stroke-width="3"/><text x="${cx}" y="148" font-size="44" font-weight="900" text-anchor="middle" fill="#18264A">${v}</text><text x="${cx}" y="112" font-size="14" text-anchor="middle" fill="#5B6886">▲</text></g>`});
+  return g+'<g data-hs="open"><rect x="130" y="190" width="100" height="40" rx="10" fill="#F2C23A" stroke="#2B2B33" stroke-width="3"/><text x="180" y="217" font-size="18" font-weight="900" text-anchor="middle" fill="#2B2B33">あける</text></g>'}
+const R2={
+ draw(){const f=S.f;
+  if(zoom==='lock')return {svg:dialSvg('#B9C3CE','ドアの数字ロック'),where:'ドアのロック（近く）'};
+  let g=BG2;
+  if(view===0){g+=`<g data-hs="door"><rect x="125" y="70" width="110" height="160" rx="4" fill="${f.doorOpen?'#2B2B33':'#E2E8F0'}" stroke="#64748b" stroke-width="4"/>${f.doorOpen?'<rect x="129" y="74" width="40" height="152" fill="#FFF1B8" opacity=".8"/>':'<rect x="200" y="140" width="24" height="34" rx="4" fill="#334155"/><rect x="204" y="146" width="16" height="8" fill="#22d3ee"/><circle cx="212" cy="164" r="3" fill="#94a3b8"/>'}</g>
+    <g data-hs="calendar"><rect x="30" y="60" width="70" height="80" fill="#fff" stroke="#64748b" stroke-width="3"/><rect x="30" y="60" width="70" height="18" fill="#ef4444"/><text x="65" y="74" font-size="12" font-weight="900" text-anchor="middle" fill="#fff">11月</text>${[...Array(12)].map((_,i)=>`<rect x="${36+(i%4)*15}" y="${84+(i/4|0)*16}" width="10" height="10" fill="#e2e8f0"/>`).join('')}</g>
+    <g data-hs="mat"><ellipse cx="180" cy="250" rx="70" ry="12" fill="#f59e0b"/></g>`}
+  if(view===1){g+=`<g data-hs="fridge"><rect x="110" y="30" width="140" height="200" rx="12" fill="#F8FAFC" stroke="#64748b" stroke-width="4"/><rect x="110" y="110" width="140" height="4" fill="#94a3b8"/><rect x="230" y="50" width="8" height="40" rx="3" fill="#94a3b8"/><rect x="230" y="130" width="8" height="50" rx="3" fill="#94a3b8"/>
+      ${f.fridgeOpen?`<rect x="116" y="116" width="128" height="110" fill="#dbeafe"/><rect x="116" y="170" width="128" height="4" fill="#93c5fd"/>${has('ice')||f.iceMelt?'':'<g data-hs="ice"><rect x="150" y="128" width="40" height="36" rx="5" fill="#bae6fd" stroke="#38bdf8" stroke-width="3"/><text x="170" y="153" font-size="16" text-anchor="middle">🔑</text></g>'}<text x="210" y="205" font-size="22" text-anchor="middle">🥛</text>`:''}</g>
+    <g data-hs="magnets"><text x="135" y="80" font-size="22">🍮</text><text x="165" y="80" font-size="22">🍪</text><text x="195" y="80" font-size="22">🍰</text></g>`}
+  if(view===2){g+=`<rect x="40" y="150" width="280" height="80" fill="#cbd5e1" stroke="#64748b" stroke-width="3"/>
+    <g data-hs="stove"><rect x="58" y="100" width="136" height="56" fill="#000" opacity="0"/><rect x="60" y="138" width="130" height="14" fill="#1f2937"/><circle cx="95" cy="145" r="16" fill="none" stroke="#ef4444" stroke-width="4"/><circle cx="155" cy="145" r="16" fill="none" stroke="#475569" stroke-width="4"/><rect x="70" y="110" width="50" height="22" rx="4" fill="#64748b"/><rect x="118" y="116" width="26" height="5" fill="#475569"/></g>
+    <g data-hs="oven"><rect x="210" y="165" width="90" height="55" rx="6" fill="#334155"/><rect x="220" y="175" width="70" height="35" rx="4" fill="#0f172a"/></g>
+    <g data-hs="kettle"><path d="M240 140h40l-6-30h-28z" fill="#f59e0b"/><circle cx="260" cy="104" r="5" fill="#b45309"/></g>`}
+  if(view===3){g+=`<g data-hs="window"><rect x="40" y="40" width="120" height="90" fill="#bae6fd" stroke="#fff" stroke-width="8"/><rect x="96" y="40" width="8" height="90" fill="#fff"/></g>
+    <rect x="30" y="150" width="300" height="80" fill="#e2e8f0" stroke="#64748b" stroke-width="3"/>
+    <g data-hs="sink"><rect x="58" y="100" width="116" height="56" fill="#000" opacity="0"/><rect x="60" y="138" width="110" height="16" rx="4" fill="#94a3b8"/><path d="M110 138v-30h18" fill="none" stroke="#64748b" stroke-width="5"/></g>
+    <g data-hs="cupboard"><rect x="190" y="40" width="130" height="90" rx="6" fill="${f.cupOpen?'#7c5a3a':'#b08968'}" stroke="#7c5a3a" stroke-width="4"/>${f.cupOpen?`${has('recipe')?'':'<g data-hs="recipe"><rect x="235" y="70" width="40" height="30" fill="#fff" stroke="#94a3b8" stroke-width="2"/><text x="255" y="90" font-size="14" text-anchor="middle">📋</text></g>'}<text x="210" y="120" font-size="18">🍽️</text>`:'<rect x="253" y="45" width="4" height="80" fill="#7c5a3a"/><circle cx="246" cy="86" r="4" fill="#f2c23a"/><circle cx="264" cy="86" r="4" fill="#f2c23a"/><rect x="250" y="94" width="10" height="8" rx="2" fill="#2b2b33"/>'}</g>`}
+  return {svg:g,where:ROOMS[2].walls[view]}},
+ act(hs){const f=S.f;
+  switch(hs){
+  case 'door':if(f.doorOpen)return escape();zoom='lock';draw();msg('3けたの数字で開くロックだ。数字をタップして合わせよう');return;
+  case 'dial-0':case 'dial-1':case 'dial-2':{const i=+hs.slice(5);dial[i]=(dial[i]+1)%10;Sfx.play('tap');draw();return}
+  case 'open':if(dial.join('')==='431'){f.doorOpen=true;zoom=null;Sfx.play('ok');draw();save();msg('ピッ！ ロックが外れた！');setTimeout(escape,900)}else{Sfx.play('ng');msg('ブブー…番号がちがうようだ')}return;
+  case 'calendar':msg('11月のカレンダー。特に印はない');return;
+  case 'mat':msg('玄関マット。裏には何もない');return;
+  case 'fridge':if(!f.fridgeOpen){f.fridgeOpen=true;Sfx.play('tap');draw();save();msg('冷蔵庫を開けた。ひんやり…中に氷のかたまりがある')}else msg('牛乳が冷えている');return;
+  case 'ice':give('ice');draw();msg('氷のかたまりを手に入れた。中に小さな鍵が見える…とかせないかな');return;
+  case 'magnets':msg('冷蔵庫のマグネット。左から プリン・クッキー・ケーキ の順に並んでいる');return;
+  case 'stove':if(use('ice')){S.inv=S.inv.filter(k=>k!=='ice');f.iceMelt=true;sel=null;invDraw();give('ckey');save();msg('コンロの火で氷をとかした。小さな鍵が出てきた！');return}
+    msg(sel?'それをコンロで温めてもしかたない':'コンロ。火はつくみたいだ');Sfx.play('tap');return;
+  case 'oven':msg('オーブンの中は空っぽ');return;
+  case 'kettle':msg('やかん。中は空だ');return;
+  case 'window':msg('いい天気。窓は開かない');return;
+  case 'sink':msg('流し。水がぽたぽた落ちている');return;
+  case 'cupboard':if(f.cupOpen){if(!has('recipe'))msg('戸棚の中にカードがある');else msg('お皿が並んでいる');return}
+    if(use('ckey')){f.cupOpen=true;S.inv=S.inv.filter(k=>k!=='ckey');sel=null;invDraw();Sfx.play('ok');draw();save();msg('小さな鍵で戸棚が開いた！');return}
+    msg(sel?'それは使えないみたい':'戸棚には小さな鍵がかかっている');Sfx.play('tap');return;
+  case 'recipe':give('recipe');draw();msg('レシピカードだ。「クッキー3まい・ケーキ1こ・プリン4こ」');return;
+  }},
+ hint(){const f=S.f;
+  if(!f.fridgeOpen)return '冷蔵庫の壁で、冷蔵庫を開けてみよう';
+  if(!has('ice')&&!f.iceMelt)return '冷蔵庫の中の氷のかたまりを取ろう';
+  if(!f.iceMelt)return '氷を選んで、コンロでとかそう';
+  if(!f.cupOpen)return '小さな鍵を選んで、流しの壁の戸棚をタップ';
+  if(!has('recipe'))return '開いた戸棚の中のカードを取ろう';
+  return 'レシピの数を、冷蔵庫のマグネットの順（プリン→クッキー→ケーキ）に並べると…431';
+ }
+};
+const SHAPE={tri:'△',sq:'□',cir:'○'};
+const R3={
+ draw(){const f=S.f;
+  if(zoom==='toybox'){let g='<rect width="360" height="300" fill="#FDE7EF"/><rect x="40" y="40" width="280" height="200" rx="12" fill="#60a5fa" stroke="#1e3a8a" stroke-width="5"/><text x="180" y="78" font-size="16" font-weight="900" text-anchor="middle" fill="#fff">形のボタンを じゅんばんに おす</text>';
+    if(f.boxOpen){g+=`<rect x="70" y="95" width="220" height="120" fill="#1e3a8a"/>${has('hammer')?'':'<g data-hs="hammer"><text x="180" y="170" font-size="48" text-anchor="middle">🔨</text></g>'}`}
+    else{[['tri',95],['sq',180],['cir',265]].forEach(([k,cx])=>{const on=books.includes(k);g+=`<g data-hs="shape-${k}"><circle cx="${cx}" cy="150" r="36" fill="${on?'#fde047':'#fff'}" stroke="#1e3a8a" stroke-width="4"/><text x="${cx}" y="166" font-size="44" font-weight="900" text-anchor="middle" fill="#1e3a8a">${SHAPE[k]}</text></g>`})}
+    return {svg:g,where:'おもちゃ箱（近く）'}}
+  let g=BG3;
+  if(view===0){g+=`<g data-hs="door"><rect x="140" y="70" width="110" height="160" rx="4" fill="${f.doorOpen?'#2B2B33':'#f9a8d4'}" stroke="#be185d" stroke-width="4"/>${f.doorOpen?'<rect x="144" y="74" width="40" height="152" fill="#FFF1B8" opacity=".8"/>':'<path d="M226 150l3 7h7l-6 4l2 7l-6-4l-6 4l2-7l-6-4h7z" fill="#2b2b33"/>'}</g>
+    <rect x="30" y="120" width="80" height="8" fill="#a16207"/>
+    <g data-hs="piggy">${f.piggyBroken?'<path d="M45 118l10-12l8 8l10-10l8 9l10-6l6 11z" fill="#f9a8d4"/>':'<ellipse cx="70" cy="102" rx="26" ry="18" fill="#f9a8d4" stroke="#be185d" stroke-width="3"/><circle cx="92" cy="98" r="7" fill="#f472b6"/><rect x="64" y="84" width="12" height="3" fill="#be185d"/><circle cx="82" cy="94" r="2" fill="#111"/>'}${f.piggyBroken&&!has('star')&&!f.doorOpen?'<g data-hs="star"><text x="70" y="112" font-size="22" text-anchor="middle">⭐</text></g>':''}</g>`}
+  if(view===1){g+=`<rect x="40" y="60" width="280" height="10" fill="#a16207"/><rect x="40" y="150" width="280" height="10" fill="#a16207"/>
+    <g data-hs="robot"><rect x="70" y="${f.robotOn?100:108}" width="40" height="40" rx="6" fill="#94a3b8" stroke="#334155" stroke-width="3"/><rect x="78" y="${f.robotOn?86:94}" width="24" height="18" rx="4" fill="#cbd5e1" stroke="#334155" stroke-width="2"/><circle cx="86" cy="${f.robotOn?95:103}" r="3" fill="${f.robotOn?'#22d3ee':'#334155'}"/><circle cx="94" cy="${f.robotOn?95:103}" r="3" fill="${f.robotOn?'#22d3ee':'#334155'}"/>${f.robotOn?'<text x="140" y="110" font-size="13" font-weight="900" fill="#1e3a8a">△→□→○</text>':''}</g>
+    <g data-hs="ball"><circle cx="250" cy="130" r="18" fill="#ef4444"/><path d="M232 130h36" stroke="#fff" stroke-width="4"/></g>
+    <g data-hs="toybox"><rect x="120" y="175" width="130" height="55" rx="6" fill="#60a5fa" stroke="#1e3a8a" stroke-width="4"/><text x="185" y="210" font-size="18" font-weight="900" text-anchor="middle" fill="#fff">△□○</text></g>`}
+  if(view===2){g+=`<g data-hs="bed"><rect x="60" y="150" width="240" height="60" rx="10" fill="#93c5fd" stroke="#1e3a8a" stroke-width="3"/><rect x="60" y="200" width="12" height="30" fill="#a16207"/><rect x="288" y="200" width="12" height="30" fill="#a16207"/></g>
+    <g data-hs="pillow"><ellipse cx="110" cy="148" rx="40" ry="16" fill="#fff" stroke="#94a3b8" stroke-width="3"/></g>
+    <g data-hs="bear"><circle cx="250" cy="130" r="18" fill="#c08457"/><circle cx="236" cy="114" r="7" fill="#c08457"/><circle cx="264" cy="114" r="7" fill="#c08457"/><circle cx="244" cy="128" r="2.5" fill="#111"/><circle cx="256" cy="128" r="2.5" fill="#111"/></g>`}
+  if(view===3){g+=`<g data-hs="board"><rect x="50" y="40" width="200" height="130" fill="#000" opacity="0"/><rect x="50" y="40" width="200" height="130" fill="#14532d" stroke="#a16207" stroke-width="8"/><path d="M90 120q20-40 40 0t40 0" fill="none" stroke="#fff" stroke-width="3"/><circle cx="200" cy="80" r="14" fill="none" stroke="#fde047" stroke-width="3"/></g>
+    <g data-hs="window"><rect x="270" y="50" width="70" height="90" fill="#bae6fd" stroke="#fff" stroke-width="6"/></g>
+    <g data-hs="blocks"><rect x="80" y="200" width="28" height="28" fill="#ef4444"/><rect x="110" y="200" width="28" height="28" fill="#22c55e"/><rect x="95" y="172" width="28" height="28" fill="#3b82f6"/></g>`}
+  return {svg:g,where:ROOMS[3].walls[view]}},
+ act(hs){const f=S.f;
+  switch(hs){
+  case 'door':if(f.doorOpen)return escape();if(use('star')){f.doorOpen=true;S.inv=S.inv.filter(k=>k!=='star');sel=null;invDraw();Sfx.play('ok');draw();save();msg('星の鍵がぴったり！ ドアが開いた');setTimeout(escape,900);return}
+    msg(sel?'それは鍵穴に入らない':'ドアには星の形の鍵穴がある');Sfx.play('tap');return;
+  case 'piggy':if(f.piggyBroken){msg(has('star')||f.doorOpen?'われたブタの貯金箱':'かけらの中に星の鍵がある！');return}
+    if(use('hammer')){f.piggyBroken=true;sel=null;Sfx.play('hit');draw();save();msg('えいっ！ 貯金箱が割れた。中から星の鍵が出てきた！');return}
+    msg(sel?'それでは割れない':'ブタの貯金箱。振るとカラカラ音がする');Sfx.play('tap');return;
+  case 'star':give('star');draw();msg('星の鍵を手に入れた！');return;
+  case 'robot':if(f.robotOn){msg('ロボット「ピピッ。ヒミツノ ジュンバンハ さんかく・しかく・まる」');return}
+    if(use('battery')){f.robotOn=true;S.inv=S.inv.filter(k=>k!=='battery');sel=null;invDraw();Sfx.play('coin');draw();save();msg('ロボットが動き出した！「ピピッ。ヒミツノ ジュンバンハ さんかく・しかく・まる」');return}
+    msg(sel?'それは入らない':'おもちゃのロボット。でんちが入っていないみたい');Sfx.play('tap');return;
+  case 'ball':msg('赤いボール。ただのボールだ');return;
+  case 'toybox':zoom='toybox';books=[];draw();msg(f.boxOpen?'おもちゃ箱は開いている':'ふたに △ □ ○ のボタンがある。順番に押すと開くみたい');return;
+  case 'shape-tri':case 'shape-sq':case 'shape-cir':{if(f.boxOpen)return;const k=hs.slice(6);if(books.includes(k))return;books.push(k);Sfx.play('place');draw();
+    if(books.length===3){if(books.join()==='tri,sq,cir'){f.boxOpen=true;Sfx.play('ok');draw();save();msg('パカッ！ おもちゃ箱が開いた')}else{msg('ブブー…ボタンがもとに戻った');setTimeout(()=>{books=[];draw()},450)}}return}
+  case 'hammer':give('hammer');draw();msg('おもちゃのハンマーを手に入れた');return;
+  case 'pillow':if(!f.pillow){f.pillow=true;give('battery');save();msg('まくらの下に でんち があった！')}else msg('ふかふかのまくら');return;
+  case 'bed':msg('ふかふかのベッド');return;
+  case 'bear':msg('クマのぬいぐるみ。にこにこしている');return;
+  case 'board':msg('黒板。山と月の らくがき がある');return;
+  case 'window':msg('外は夕方。窓は開かない');return;
+  case 'blocks':msg('つみき。高く積むとくずれそう');return;
+  }},
+ hint(){const f=S.f;
+  if(!has('battery')&&!f.robotOn)return 'ベッドの壁のまくらを調べてみよう';
+  if(!f.robotOn)return 'でんちを選んで、おもちゃ棚のロボットに入れよう';
+  if(!f.boxOpen)return 'ロボットが教えてくれた順番（△→□→○）で、おもちゃ箱のボタンを押そう';
+  if(!has('hammer')&&!f.piggyBroken)return '開いたおもちゃ箱の中を調べよう';
+  if(!f.piggyBroken)return 'ハンマーを選んで、ドアの壁のブタの貯金箱をタップ';
+  if(!has('star')&&!f.doorOpen)return '割れた貯金箱から星の鍵を取ろう';
+  return '星の鍵を選んで、ドアをタップ！';
+ }
+};
 /* ---------- 絵（オリジナルの簡単なSVG） ---------- */
 const wallBG='<rect width="360" height="300" fill="#F3E6CF"/><rect y="230" width="360" height="70" fill="#C9A27A"/><rect y="228" width="360" height="6" fill="#A8794E"/>';
 function svgWall(n){const f=S.f;let g=wallBG;
@@ -95,12 +220,14 @@ function svgClock(){let g='<rect width="360" height="300" fill="#F3E6CF"/><circl
   for(let i=1;i<=12;i++){g+=`<text x="${180+Math.sin(i*Math.PI/6)*90}" y="${158-Math.cos(i*Math.PI/6)*90}" font-size="22" font-weight="700" text-anchor="middle" fill="#5B3A22">${i}</text>`}
   g+=`<line x1="180" y1="150" x2="${180+Math.sin(3.25*Math.PI/6)*55}" y2="${150-Math.cos(3.25*Math.PI/6)*55}" stroke="#2B2B33" stroke-width="10" stroke-linecap="round"/><line x1="180" y1="150" x2="${180+Math.sin(Math.PI/2)*85}" y2="150" stroke="#2B2B33" stroke-width="6" stroke-linecap="round"/><circle cx="180" cy="150" r="8" fill="#2B2B33"/>`;
   return `<svg viewBox="0 0 360 300">${g}</svg>`}
+const NAV=()=>zoom?'<button class="es-back" type="button" data-nav="back">↩ もどる</button>':'<button class="es-nav l" type="button" data-nav="-1" aria-label="左の壁へ">◀</button><button class="es-nav r" type="button" data-nav="1" aria-label="右の壁へ">▶</button>';
 function draw(){const r=$('#es-room');let h='';
+  if(room!==1){const o=(room===2?R2:R3).draw();r.innerHTML=`<svg viewBox="0 0 360 300" xmlns="http://www.w3.org/2000/svg">${o.svg}</svg>`+NAV();$('#es-where').textContent=`${ROOMS[room].name}・${o.where}`;return}
   if(zoom==='shelf')h=svgShelf();else if(zoom==='safe')h=svgSafe();else if(zoom==='clock')h=svgClock();else h=svgWall(view);
   h+=zoom?'<button class="es-back" type="button" data-nav="back">↩ もどる</button>':'<button class="es-nav l" type="button" data-nav="-1" aria-label="左の壁へ">◀</button><button class="es-nav r" type="button" data-nav="1" aria-label="右の壁へ">▶</button>';
-  r.innerHTML=h;$('#es-where').textContent=zoom==='shelf'?'本棚（近く）':zoom==='safe'?'金庫（近く）':zoom==='clock'?'時計（近く）':WALLS[view];}
+  r.innerHTML=h;$('#es-where').textContent=zoom==='shelf'?'本棚（近く）':zoom==='safe'?'金庫（近く）':zoom==='clock'?'時計（近く）':WALLS[view];$('#es-where').textContent='書斎・'+$('#es-where').textContent}
 /* ---------- 調べる ---------- */
-function act(hs){const f=S.f;
+function act(hs){if(room!==1)return (room===2?R2:R3).act(hs);const f=S.f;
   switch(hs){
   case 'door':if(f.doorOpen)return escape();if(use('gkey')){f.doorOpen=true;sel=null;S.inv=S.inv.filter(k=>k!=='gkey');Sfx.play('ok');msg('金の鍵がぴったり合った！ ドアが開いた');invDraw();draw();save();setTimeout(escape,900);return}
     msg(sel?'それはドアには使えないみたい':'ドアには鍵がかかっている。金色の鍵穴だ');Sfx.play('tap');return;
@@ -124,20 +251,23 @@ function act(hs){const f=S.f;
   case 'window':msg('夕焼けの空。窓ははめ殺しで開かない');return;
   case 'pot':if(!f.potDug){f.potDug=true;give('skey');draw();msg('鉢植えの土を少しほると…銀の鍵が出てきた！')}else msg('ふかふかの土の鉢植え');return;
   }}
-function hint(){const f=S.f;let t;
+function hint(){if(room!==1){S.hints=(S.hints||0)+1;save();msg('ヒント：'+(room===2?R2:R3).hint());return}const f=S.f;let t;
   if(!has('skey')&&!f.drawerOpen)t='窓の壁の植物を調べてみよう';else if(!f.drawerOpen)t='銀の鍵を選んで、机の引き出しをタップ';
   else if(!f.lit)t='ライトを選んで、本棚の下の暗いすき間を照らそう';else if(!f.comp)t='本棚の3冊の本を、すき間の文字の順番に押してみよう';
   else if(!has('memo')&&!f.safeOpen)t='本棚の上のすみに開いた小さな扉を見てみよう';else if(!f.safeOpen)t='ドアの壁の時計が指している時刻（3時15分）が金庫の番号だ';
   else if(!has('gkey')&&!f.doorOpen)t='開いた金庫の中を調べよう';else t='金の鍵を選んで、ドアをタップ！';
   S.hints=(S.hints||0)+1;save();msg('ヒント：'+t)}
-function escape(){if(S.done)return;S.done=true;clock(false);const t=Math.floor(S.time);const nb=best==null||t<best;if(nb){best=t;store.set('best',t)}clears++;store.set('clears',clears);store.set('save',null);Sfx.play('clear');rec();
-  overlay(`<h3>脱出成功！</h3><div class="big">${fmt(t)}</div><p>${nb?'ベスト更新！<br>':''}ヒント ${S.hints||0}回</p><div class="row"><button type="button" data-o="again">もう一度</button></div>`)}
+function escape(){if(S.done)return;S.done=true;clock(false);const t=Math.floor(S.time);const nb=best==null||t<best;if(nb){best=t;store.set(RK('best'),t)}clears++;store.set(RK('clears'),clears);store.set(RK('save'),null);Sfx.play('clear');rec();
+  overlay(`<h3>脱出成功！</h3><div class="big">${fmt(t)}</div><p>${nb?'ベスト更新！<br>':''}ヒント ${S.hints||0}回</p><div class="row">${room<3?`<button type="button" data-o="room${room+1}">次の部屋へ</button>`:''}<button type="button" data-o="menu">部屋をえらぶ</button></div>`)}
 function rec(){$('#es-rec').textContent=best!=null?`ベスト ${fmt(best)}・脱出${clears}回`:''}
 function overlay(html){$('#es-room').querySelectorAll('.es-over').forEach(o=>o.remove());if(!html)return;const o=document.createElement('div');o.className='es-over';o.innerHTML=html;$('#es-room').appendChild(o)}
-function start(resume){const sv=store.get('save',null);S=resume&&sv?sv:fresh();view=S.wall||0;zoom=null;sel=null;dial=[0,0,0];books=[];tStart=0;draw();invDraw();clock(true);msg(resume&&sv?'つづきから。':'気がつくと、知らない書斎にいた…ドアから外に出よう');Save.touch({game:'escape'})}
-function title(){S=fresh();draw();invDraw();const sv=store.get('save',null);
-  overlay(`<h3>ミニ脱出</h3><p>部屋をタップして調べ、道具を使って脱出しよう</p><p>◀ ▶ で向きを変える。道具は下の欄で選んでから使う場所をタップ</p>${best!=null?`<p>ベスト ${fmt(best)}</p>`:''}<div class="row">${sv?'<button type="button" data-o="resume">つづきから</button>':''}<button type="button" data-o="new">${sv?'はじめから':'スタート'}</button></div>`)}
-$('#es-room').addEventListener('click',e=>{const o=e.target.closest('[data-o]');if(o){overlay(null);start(o.dataset.o==='resume');return}
+function start(resume,r){if(r)room=r;loadRoomRec();rec();const sv=store.get(RK('save'),null);S=resume&&sv?sv:fresh();view=S.wall||0;zoom=null;sel=null;dial=[0,0,0];books=[];tStart=0;draw();invDraw();clock(true);msg(resume&&sv?'つづきから。':ROOMS[room].start);Save.touch({game:'escape'})}
+function unlocked(r){return r===1||store.get(r===2?'clears':'clears'+(r-1),0)>0}
+function title(){room=1;S=fresh();draw();invDraw();$('#es-rec').textContent='';$('#es-time').textContent='00:00';
+  const rows=[1,2,3].map(r=>{const b=store.get(r===1?'best':'best'+r,null),sv=store.get(r===1?'save':'save'+r,null),ok=unlocked(r);
+    return `<div style="display:flex;gap:6px;align-items:center;justify-content:center;width:100%"><button type="button" data-o="${sv?'resume':'new'}" data-r="${r}" ${ok?'':'disabled style="opacity:.4"'} style="min-width:150px">部屋${r} ${ROOMS[r].name}${sv?'（つづき）':''}</button><span style="font-size:12px;min-width:84px;text-align:left">${ok?(b!=null?'ベスト '+fmt(b):'未脱出'):'🔒 前の部屋を脱出'}</span>${sv&&ok?`<button type="button" data-o="new" data-r="${r}" style="padding:6px 8px;font-size:12px">最初から</button>`:''}</div>`}).join('');
+  overlay(`<h3>ミニ脱出</h3><p style="font-size:13px">部屋をタップして調べ、道具を使って脱出しよう。◀ ▶ で向きを変える。道具は下の欄で選んでから使う場所をタップ</p>${rows}`)}
+$('#es-room').addEventListener('click',e=>{const o=e.target.closest('[data-o]');if(o){if(o.disabled)return;const d=o.dataset.o;if(d==='menu'){clock(false);title();return}overlay(null);if(d.startsWith('room')){start(false,+d.slice(4));return}start(d==='resume',+(o.dataset.r||room));return}
   if(!S||S.done&&!e.target.closest('[data-o]'))return;if(!tStart)return;
   const n=e.target.closest('[data-nav]');if(n){if(n.dataset.nav==='back'){zoom=null;books=[]}else{view=(view+(+n.dataset.nav)+4)%4;S.wall=view}draw();msg('');save();return}
   const h=e.target.closest('[data-hs]');if(h)act(h.dataset.hs)});
