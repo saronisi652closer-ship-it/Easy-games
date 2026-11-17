@@ -44,6 +44,7 @@
 <script>
 Save.ready.then(()=>{
 const store=makeStore('ft_');
+const getBest=()=>{const v=store.get('best',{});return v&&typeof v==='object'?v:{}};
 let n=+store.get('size',4),T=null,clock=makeClock($('#ft-time')),tiles=[];
 segInit($('#ft-size'),n,v=>{n=+v;store.set('size',n);start(true)});
 function solved(a){for(let i=0;i<a.length-1;i++)if(a[i]!==i+1)return false;return true}
@@ -62,13 +63,13 @@ function build(){const box=$('#ft-in');box.innerHTML='';tiles=[];
     b.addEventListener('pointerdown',e=>{e.preventDefault();tap(v)});box.appendChild(b);tiles[v]=b}}
 function render(){const a=T.a;for(let i=0;i<a.length;i++){const v=a[i];if(!v)continue;const t=tiles[v];
   t.style.transform=`translate(${(i%n)*100}%,${((i/n)|0)*100}%) translate(${(i%n)*6}px,${((i/n)|0)*6}px)`;t.classList.toggle('ok',v===i+1)}
-  $('#ft-moves').textContent=T.moves;const b=store.get('best',{})[n];$('#ft-best').textContent=b?`ベスト ${b.moves}手・${fmt(b.time)}`:''}
+  $('#ft-moves').textContent=T.moves;const b=getBest()[n];$('#ft-best').textContent=b?`ベスト ${b.moves}手・${fmt(b.time)}`:''}
 function tap(v){if(T.done)return;const a=T.a,i=a.indexOf(v),e=a.indexOf(0),r=(i/n)|0,c=i%n,er=(e/n)|0,ec=e%n;
   if(r!==er&&c!==ec){Sfx.play('ng');return}
   const step=r===er?(c<ec?-1:1):(r<er?-n:n);let k=e;
   while(k!==i){const nx=k+step;a[k]=a[nx];a[nx]=0;k=nx;T.moves++}
   Sfx.play('tap');if(!clock.running())clock.run();
-  if(solved(a)){T.done=true;clock.stop();T.time=clock.get();const best=store.get('best',{}),b=best[n];
+  if(solved(a)){T.done=true;clock.stop();T.time=clock.get();const best=getBest(),b=best[n];
     const nb=!b||T.moves<b.moves||(T.moves===b.moves&&T.time<b.time);
     const bt=store.get('bestTime',{});const ntb=bt[n]==null||T.time<bt[n];if(ntb){bt[n]=Math.floor(T.time);store.set('bestTime',bt)}
     if(nb){best[n]={moves:T.moves,time:Math.floor(T.time)};store.set('best',best)}
