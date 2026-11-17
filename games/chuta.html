@@ -157,6 +157,29 @@
   ::-webkit-scrollbar { width: 6px; }
   ::-webkit-scrollbar-track { background: #fde68a; border-radius: 6px; }
   ::-webkit-scrollbar-thumb { background: #92400e; border-radius: 6px; }
+  /* ===== タイトル画面：重ならないレイアウト ===== */
+  #title-overlay {
+    justify-content: center !important;
+    gap: clamp(4px, 1.8vh, 12px);
+    padding: clamp(54px, 15vh, 78px) 12px clamp(6px, 2vh, 14px) !important;
+  }
+  #title-overlay h1 {
+    font-size: clamp(24px, min(6.2vw, 11vh), 54px) !important;
+    line-height: 1.1;
+    white-space: nowrap;
+    background: rgba(255, 251, 235, .62); border-radius: 22px; padding: 2px 16px 6px;
+    box-shadow: 0 4px 0 rgba(120, 53, 15, .25);
+  }
+  #title-overlay h1 br { display: none; }
+  #title-overlay .title-start { font-size: clamp(17px, 5vh, 24px) !important; padding: clamp(4px, 1.4vh, 10px) clamp(26px, 6vw, 46px) !important; }
+  #title-overlay #title-howto-panel { margin: clamp(6px, 2vh, 14px) 0 0 !important; max-width: min(560px, 94vw); }
+  body.is-title #action-pad,
+  body.is-title #world-badge,
+  body.is-title .hud-dup,
+  body.is-title #stick-zone { display: none !important; }
+  @media (max-height: 340px) {
+    #title-overlay #title-howto-panel { display: none !important; }
+  }
 </style>
 </head>
 <body>
@@ -167,13 +190,14 @@
   <div id="portrait-overlay" class="fixed inset-0 z-50 bg-amber-950/95 backdrop-blur-md flex-col items-center justify-center p-6 text-center">
     <div class="parchment p-6 max-w-xs w-full flex flex-col items-center gap-4 text-amber-950">
       <div class="text-6xl tilt-anim">📱</div>
-      <h2 class="text-xl font-black text-amber-900">スマホを横画面にして遊んでね！</h2>
+      <h2 class="text-xl font-black text-amber-900">横画面で遊んでね！</h2>
       <p class="text-xs font-bold text-amber-800 leading-relaxed">
         画面を横向きにすると、チュータの絵本の世界と操作ボタンがぴったり表示されます！
       </p>
       <button onclick="requestLandscapeFullscreen()" class="puffy-btn bg-amber-400 border-2 border-amber-900 rounded-full px-5 py-2 text-sm font-black text-amber-950 shadow-[0_3px_0_#451a03]">
-        横画面・全画面に切り替える
+        全画面・横向きで遊ぶ
       </button>
+      <p class="text-[10px] font-bold text-amber-800 leading-relaxed">ブラウザのバーが消えて、画面いっぱいに表示されます。<br>iPhoneは共有ボタンから「ホーム画面に追加」すると全画面で遊べます。</p>
     </div>
   </div>
 
@@ -211,12 +235,12 @@
 
       <!-- 右上：プレイ中も押せる「あそびかた」「ステージ」「全画面」＆「BGM設定」 -->
       <div class="pointer-events-auto flex items-start gap-1.5">
-        <button onclick="openHowToModal()" class="parchment px-2.5 py-1.5 text-amber-950 font-black text-xs flex items-center gap-1 cursor-pointer hover:bg-amber-100 active:translate-y-0.5 whitespace-nowrap">
+        <button onclick="openHowToModal()" class="hud-dup parchment px-2.5 py-1.5 text-amber-950 font-black text-xs flex items-center gap-1 cursor-pointer hover:bg-amber-100 active:translate-y-0.5 whitespace-nowrap">
           <span>📖</span>
           <span>あそびかた</span>
         </button>
 
-        <button onclick="openStageModal()" class="parchment px-2.5 py-1.5 text-amber-950 font-black text-xs flex items-center gap-1 cursor-pointer hover:bg-amber-100 active:translate-y-0.5 whitespace-nowrap">
+        <button onclick="openStageModal()" class="hud-dup parchment px-2.5 py-1.5 text-amber-950 font-black text-xs flex items-center gap-1 cursor-pointer hover:bg-amber-100 active:translate-y-0.5 whitespace-nowrap">
           <span>🗺️</span>
           <span>ステージ</span>
         </button>
@@ -277,7 +301,7 @@
           <div id="btn-a" class="act-btn act-a pad-btn"><span class="big">A</span><span>ジャンプ</span></div>
         </div>
 
-        <button onclick="openStageModal()" class="pointer-events-auto parchment px-2.5 py-1 flex items-center gap-1.5 text-amber-950 font-black text-[11px] cursor-pointer hover:bg-amber-100 whitespace-nowrap">
+        <button id="world-badge" onclick="openStageModal()" class="pointer-events-auto parchment px-2.5 py-1 flex items-center gap-1.5 text-amber-950 font-black text-[11px] cursor-pointer hover:bg-amber-100 whitespace-nowrap">
           <span>🚩</span>
           <span id="hud-world-label">ワールド 1-1</span>
           <span class="bg-amber-800 text-white text-[9px] px-1.5 py-0.2 rounded">選択</span>
@@ -300,12 +324,12 @@
     </div>
 
     <div class="pointer-events-auto flex flex-col items-center gap-2">
-      <button onclick="startNewGame()" class="puffy-btn bg-gradient-to-b from-yellow-300 via-amber-400 to-amber-500 border-4 border-amber-900 rounded-full px-9 py-2 sm:px-12 sm:py-2.5 text-xl sm:text-2xl font-black text-amber-950 shadow-[0_5px_0_#451a03] flex items-center gap-2 cursor-pointer">
+      <button onclick="startNewGame()" class="title-start puffy-btn bg-gradient-to-b from-yellow-300 via-amber-400 to-amber-500 border-4 border-amber-900 rounded-full px-9 py-2 sm:px-12 sm:py-2.5 text-xl sm:text-2xl font-black text-amber-950 shadow-[0_5px_0_#451a03] flex items-center gap-2 cursor-pointer">
         <span class="text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.6)]">▶</span>
         <span>スタート</span>
       </button>
 
-      <div class="flex gap-2">
+      <div class="flex flex-wrap justify-center gap-2">
         <button onclick="openStageModal()" class="puffy-btn bg-gradient-to-b from-lime-400 to-emerald-600 border-3 border-emerald-950 rounded-full px-4 py-1 text-xs sm:text-sm font-black text-white ehon-outline shadow-[0_3px_0_#14532d] flex items-center gap-1 cursor-pointer">
           <span>🏆</span>
           <span>ステージ・クリア済み</span>
@@ -492,15 +516,23 @@ function toggleFullScreen() {
   }
 }
 
-function requestLandscapeFullscreen() {
-  toggleFullScreen();
-  if (screen.orientation && screen.orientation.lock) {
-    screen.orientation.lock('landscape').catch(() => {});
-  }
+async function requestLandscapeFullscreen() {
+  const el = document.documentElement;
+  try {
+    if (!document.fullscreenElement) {
+      if (el.requestFullscreen) await el.requestFullscreen({ navigationUI: 'hide' });
+      else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+    }
+  } catch (e) {}
+  try {
+    if (screen.orientation && screen.orientation.lock) await screen.orientation.lock('landscape');
+  } catch (e) {}
 }
+// スマホ・タブレットでは、スタートを押したときに自動で全画面＋横向きにする（ブラウザのバーで画面がつぶれないように）
+function isTouchDevice() { return matchMedia('(pointer: coarse)').matches; }
 
 // ============================================================
-// 2. Web Audio API アコースティック＆ブラス風BGM（「やきあがりのパーン」オマージュ）
+// 2. Web Audio API アコースティック＆ブラス風BGM（オリジナル曲）
 // ============================================================
 let audioCtx = null;
 let bgmEnabled = true;
@@ -566,50 +598,38 @@ function playNote(freq, type, duration, gainVal, when) {
 }
 
 const SONG_STEPS = [
-  { lead: 392.00, bass: 196.00, chord: [246.94, 293.66], brass: 0 },
-  { lead: 0,      bass: 0,      chord: [246.94, 293.66], brass: 0 },
-  { lead: 440.00, bass: 196.00, chord: [246.94, 293.66], brass: 0 },
-  { lead: 493.88, bass: 293.66, chord: [369.99, 440.00], brass: 0 },
-  { lead: 587.33, bass: 146.83, chord: [293.66, 369.99], brass: 0 },
-  { lead: 0,      bass: 0,      chord: [293.66, 369.99], brass: 0 },
-  { lead: 523.25, bass: 146.83, chord: [293.66, 369.99], brass: 0 },
-  { lead: 493.88, bass: 196.00, chord: [246.94, 293.66], brass: 0 },
-
-  { lead: 392.00, bass: 196.00, chord: [246.94, 293.66], brass: 0 },
-  { lead: 440.00, bass: 0,      chord: [246.94, 293.66], brass: 0 },
-  { lead: 493.88, bass: 196.00, chord: [246.94, 293.66], brass: 0 },
-  { lead: 587.33, bass: 164.81, chord: [246.94, 329.63], brass: 0 },
-  { lead: 587.33, bass: 164.81, chord: [246.94, 329.63], brass: 0 },
-  { lead: 523.25, bass: 0,      chord: [246.94, 329.63], brass: 0 },
-  { lead: 493.88, bass: 130.81, chord: [261.63, 329.63], brass: 0 },
-  { lead: 440.00, bass: 130.81, chord: [261.63, 329.63], brass: 0 },
-
-  { lead: 392.00, bass: 130.81, chord: [261.63, 329.63], brass: 0 },
-  { lead: 440.00, bass: 130.81, chord: [261.63, 329.63], brass: 0 },
-  { lead: 493.88, bass: 146.83, chord: [293.66, 369.99], brass: 0 },
-  { lead: 523.25, bass: 146.83, chord: [293.66, 369.99], brass: 0 },
-  { lead: 587.33, bass: 196.00, chord: [246.94, 293.66], brass: 0 },
-  { lead: 659.25, bass: 196.00, chord: [246.94, 293.66], brass: 0 },
-  { lead: 587.33, bass: 146.83, chord: [293.66, 369.99], brass: 0 },
-  { lead: 0,      bass: 146.83, chord: [293.66, 369.99], brass: 0 },
-
-  { lead: 0,      bass: 196.00, chord: [246.94, 293.66], brass: 587.33 },
-  { lead: 0,      bass: 196.00, chord: [246.94, 293.66], brass: 587.33 },
-  { lead: 0,      bass: 196.00, chord: [246.94, 293.66], brass: 659.25 },
-  { lead: 783.99, bass: 196.00, chord: [246.94, 293.66], brass: 783.99 },
-  { lead: 783.99, bass: 130.81, chord: [261.63, 329.63], brass: 0 },
-  { lead: 659.25, bass: 130.81, chord: [261.63, 329.63], brass: 0 },
-  { lead: 587.33, bass: 146.83, chord: [293.66, 369.99], brass: 0 },
-  { lead: 493.88, bass: 146.83, chord: [293.66, 369.99], brass: 0 },
-
-  { lead: 523.25, bass: 130.81, chord: [261.63, 329.63], brass: 0 },
-  { lead: 587.33, bass: 130.81, chord: [261.63, 329.63], brass: 0 },
-  { lead: 659.25, bass: 146.83, chord: [293.66, 369.99], brass: 0 },
-  { lead: 783.99, bass: 146.83, chord: [293.66, 369.99], brass: 0 },
-  { lead: 659.25, bass: 196.00, chord: [246.94, 293.66], brass: 587.33 },
-  { lead: 587.33, bass: 146.83, chord: [293.66, 369.99], brass: 659.25 },
-  { lead: 783.99, bass: 196.00, chord: [246.94, 293.66], brass: 783.99 },
-  { lead: 0,      bass: 196.00, chord: [246.94, 293.66], brass: 0 }
+  { lead: 523.25, bass: 130.81, chord: [261.63, 329.63], brass: 0.00 },
+  { lead: 0.00, bass: 0.00, chord: [261.63, 329.63], brass: 0.00 },
+  { lead: 392.00, bass: 130.81, chord: [261.63, 329.63], brass: 0.00 },
+  { lead: 329.63, bass: 0.00, chord: [261.63, 329.63], brass: 0.00 },
+  { lead: 349.23, bass: 130.81, chord: [261.63, 329.63], brass: 0.00 },
+  { lead: 392.00, bass: 0.00, chord: [261.63, 329.63], brass: 0.00 },
+  { lead: 0.00, bass: 130.81, chord: [261.63, 329.63], brass: 0.00 },
+  { lead: 329.63, bass: 0.00, chord: [261.63, 329.63], brass: 0.00 },
+  { lead: 293.66, bass: 98.00, chord: [246.94, 293.66], brass: 0.00 },
+  { lead: 0.00, bass: 0.00, chord: [246.94, 293.66], brass: 0.00 },
+  { lead: 392.00, bass: 98.00, chord: [246.94, 293.66], brass: 0.00 },
+  { lead: 493.88, bass: 0.00, chord: [246.94, 293.66], brass: 0.00 },
+  { lead: 440.00, bass: 98.00, chord: [246.94, 293.66], brass: 0.00 },
+  { lead: 392.00, bass: 0.00, chord: [246.94, 293.66], brass: 0.00 },
+  { lead: 349.23, bass: 98.00, chord: [246.94, 293.66], brass: 392.00 },
+  { lead: 0.00, bass: 0.00, chord: [246.94, 293.66], brass: 0.00 },
+  { lead: 329.63, bass: 110.00, chord: [220.00, 261.63], brass: 0.00 },
+  { lead: 440.00, bass: 0.00, chord: [220.00, 261.63], brass: 0.00 },
+  { lead: 523.25, bass: 110.00, chord: [220.00, 261.63], brass: 0.00 },
+  { lead: 0.00, bass: 0.00, chord: [220.00, 261.63], brass: 0.00 },
+  { lead: 493.88, bass: 87.31, chord: [220.00, 261.63], brass: 0.00 },
+  { lead: 440.00, bass: 0.00, chord: [220.00, 261.63], brass: 0.00 },
+  { lead: 349.23, bass: 87.31, chord: [220.00, 261.63], brass: 0.00 },
+  { lead: 440.00, bass: 0.00, chord: [220.00, 261.63], brass: 0.00 },
+  { lead: 392.00, bass: 98.00, chord: [246.94, 293.66], brass: 0.00 },
+  { lead: 0.00, bass: 0.00, chord: [246.94, 293.66], brass: 0.00 },
+  { lead: 587.33, bass: 98.00, chord: [246.94, 293.66], brass: 0.00 },
+  { lead: 0.00, bass: 0.00, chord: [246.94, 293.66], brass: 0.00 },
+  { lead: 493.88, bass: 130.81, chord: [261.63, 329.63], brass: 0.00 },
+  { lead: 392.00, bass: 0.00, chord: [261.63, 329.63], brass: 0.00 },
+  { lead: 523.25, bass: 130.81, chord: [261.63, 329.63], brass: 523.25 },
+  { lead: 0.00, bass: 0.00, chord: [261.63, 329.63], brass: 0.00 },
 ];
 
 function startBgmScheduler() {
@@ -1138,6 +1158,7 @@ function buildLevel(world, sub) {
 // ============================================================
 function startNewGame() {
   initAudio();
+  if (isTouchDevice() && !document.fullscreenElement) requestLandscapeFullscreen();
   try { if (window.Save) Save.touch({ game: 'chuta' }); } catch (e) {}
   lives = 3;
   coins = 0;
@@ -1467,6 +1488,7 @@ function updateGame() {
       player.jumpsLeft = maxJumps;
       hk.active = true;
     }
+    if (!hk.active && hk.x < cameraX + W + 40) hk.active = true;   // 画面に入ったら動き出す
     if (hk.active) {
       const oldX = hk.x;
       hk.x += hk.speed * hk.dir;
@@ -2219,6 +2241,14 @@ function mainLoop() {
 updateHudUI();
 startBgmScheduler();
 requestAnimationFrame(mainLoop);
+</script>
+<script>
+// あそびかた4コマをタイトルの流れの中に移す／タイトル中はプレイ用ボタンを隠す
+(function () {
+  const ov = document.getElementById('title-overlay'), panel = document.getElementById('title-howto-panel');
+  if (ov && panel) ov.appendChild(panel);
+  (function watch() { document.body.classList.toggle('is-title', gameState === 'title'); requestAnimationFrame(watch); })();
+})();
 </script>
 <script>if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('../sw.js').catch(()=>{})</script>
 </body>
