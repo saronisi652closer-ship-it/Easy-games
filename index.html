@@ -121,7 +121,7 @@ function stat(id){const g=k=>Save.get(k);
   if(id==='slither'){const b=g('slBest')||{};return 'ベスト '+[5,6,7].map(n=>`${n}×${n} ${b[n]!=null?fmt(b[n]):'--:--'}`).join('　')}
   if(id==='picross')return `絵 ${(g('px_solved')||[]).length}/8・クリア ${g('px_count')||0}問`;
   if(id==='machigai'){const b=g('mg_best')||{};return `ベスト ふつう ${b.normal!=null?fmt(b.normal):'--:--'}・クリア ${g('mg_count')||0}問`}
-  if(id==='fifteen'){const b=g('ft_best')||{};return [3,4,5].map(n=>`${n}×${n} ${b[n]?b[n].moves+'手':'--'}`).join('　')}
+  if(id==='fifteen'){const b0=g('ft_best'),b=b0&&typeof b0==='object'?b0:{};return [3,4,5].map(n=>`${n}×${n} ${b[n]?b[n].moves+'手':'--'}`).join('　')}
   if(id==='memory'){const b=g('mm_best')||{};return [8,12,18].map(n=>`${n*2}枚 ${b[n]?b[n].moves+'回':'--'}`).join('　')}
   if(id==='reaction'){const a=g('rx_best5'),o=g('rx_best1');return `ベスト平均 ${a?a+'ms':'---'}・1回 ${o?o+'ms':'---'}`}
   if(id==='mines'){const b=g('mn_best')||{};return [['easy','初'],['normal','中'],['hard','上']].map(([k,l])=>`${l} ${b[k]!=null?fmt(b[k]):'--:--'}`).join('　')}
@@ -133,7 +133,7 @@ function stat(id){const g=k=>Save.get(k);
   if(id==='escape'){const n=[g('es_clears'),g('es_clears2'),g('es_clears3')].filter(v=>v>0).length;return n?`脱出 ${n}/3部屋`+(g('es_best')!=null?`・部屋1ベスト ${fmt(g('es_best'))}`:''):(g('es_save')?'つづきから遊べます':'まだ遊んでいません')}
   if(id==='chuta'){const n=g('ch_cleared')||0;return n?`${n}/15ステージクリア・ベスト ${g('ch_best')||0}点`:'まだ遊んでいません'}
   if(id==='kaiju'){const r=g('kj_rec');return r&&(r.w||r.l)?`通算 ${r.w}勝 ${r.l}敗`:'まだ遊んでいません'}
-  if(id==='fort'){const bs=[g('ft_best')||0,g('ft_best2')||0,g('ft_best3')||0];const c=bs.filter(v=>v>=10).length;return bs[0]?`クリア ${c}/3マップ・マップ1 第${bs[0]}波まで`:'まだ遊んでいません'}
+  if(id==='fort'){const n=v=>typeof v==='number'?v:0;const bs=[n(g('fo_best')),n(g('fo_best2')),n(g('fo_best3'))];const c=bs.filter((v,i)=>v>=10||g('fo_clear'+(i+1))).length;return bs[0]?`クリア ${c}/3マップ・マップ1 第${bs[0]}波まで`:'まだ遊んでいません'}
   if(id==='tama'){const b=g('tm_best')||{};const m=Math.max(0,...Object.values(b));return m?`ベスト ${m}点`:'まだ遊んでいません'}
   if(id==='iraira'){const b=g('ir_best')||{};const n=Object.keys(b).length;return n?`${n}ステージクリア・ステージ${g('ir_stage')||1}まで`:'まだ遊んでいません'}
   if(id==='trap'){const b=g('tr_best')||{};const n=Object.keys(b).length;return n?`${n}/12ステージクリア・ミス合計${g('tr_total')||0}`:'まだ遊んでいません'}
