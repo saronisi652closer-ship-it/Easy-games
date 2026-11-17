@@ -2221,10 +2221,24 @@ function drawPlayingScene() {
   ctx.restore();
 }
 
-function mainLoop() {
-  updateGame();
+let loopLast = 0, loopAcc = 0;
+const LOOP_STEP = 1000 / 60;
+function mainLoop(now) {
+  now = now || performance.now();
+  if (!loopLast) loopLast = now;
+  let d = now - loopLast;
+  loopLast = now;
+  if (d > 250) d = LOOP_STEP;          // 別アプリから戻ったときなどは1歩だけ進める
+  loopAcc += d;
+  let steps = 0;
+  while (loopAcc >= LOOP_STEP && steps < 5) {
+    updateGame();
+    if (gameState === 'title') frame++;
+    loopAcc -= LOOP_STEP;
+    steps++;
+  }
+  if (steps >= 5) loopAcc = 0;
   if (gameState === 'title') {
-    frame++;
     drawTitleScene();
   } else {
     drawPlayingScene();
