@@ -152,3 +152,43 @@ const Save={
 };
 self.Save=Save;
 })();
+
+/* ---- ゲーム画面：スマホではタップで全画面にしてから始める（チュータは自前で全画面にするので除く） ---- */
+(function(){
+  try{
+    const path=location.pathname;
+    if(!/\/games\//.test(path)||/chuta\.html$/.test(path))return;
+    if(/[?&]debug=1/.test(location.search)||navigator.webdriver)return;
+    const d=document.documentElement,req=d.requestFullscreen||d.webkitRequestFullscreen;
+    if(!req)return;
+    const touch=(window.matchMedia&&matchMedia('(pointer:coarse)').matches)||('ontouchstart' in window);
+    if(!touch)return;
+    const isFs=()=>!!(document.fullscreenElement||document.webkitFullscreenElement);
+    const wide=/kaiju\.html$/.test(path); // 怪獣は横向きで遊ぶ
+    const show=()=>{
+      if(isFs()||document.getElementById('sk-fs'))return;
+      const name=(document.title||'').split('｜')[0];
+      const o=document.createElement('div');o.id='sk-fs';
+      o.setAttribute('style','position:fixed;inset:0;z-index:2147483000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;background:rgba(15,23,42,.97);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);color:#fff;font-family:"Zen Kaku Gothic New",system-ui,sans-serif;text-align:center;-webkit-tap-highlight-color:transparent');
+      o.innerHTML='<div style="font-size:22px;font-weight:900">'+name.replace(/[<>&]/g,'')+'</div>'+
+        '<button type="button" data-fs="go" style="border:0;border-radius:18px;padding:18px 34px;font-family:inherit;font-weight:900;font-size:20px;background:#FACC15;color:#1f2937;box-shadow:0 5px 0 #a16207">▶ タップして全画面でスタート</button>'+
+        (wide?'<div style="font-size:13px;opacity:.85">横向きで遊びます</div>':'')+
+        '<button type="button" data-fs="skip" style="border:0;background:none;color:#cbd5e1;font-family:inherit;font-weight:700;font-size:13px;text-decoration:underline;padding:8px">このまま遊ぶ</button>';
+      o.addEventListener('click',e=>{
+        e.preventDefault();e.stopPropagation();
+        const b=e.target.closest('[data-fs]');
+        if(!b||b.dataset.fs==='go'){
+          try{const p=req.call(d,{navigationUI:'hide'});
+            if(p&&p.then)p.then(()=>{if(wide&&screen.orientation&&screen.orientation.lock)screen.orientation.lock('landscape').catch(()=>{})}).catch(()=>{});
+          }catch(_){}
+        }
+        o.remove();
+        setTimeout(()=>window.dispatchEvent(new Event('resize')),350);
+      },true);
+      ['pointerdown','touchstart'].forEach(t=>o.addEventListener(t,e=>e.stopPropagation(),true));
+      document.body.appendChild(o);
+    };
+    if(document.body)show();else document.addEventListener('DOMContentLoaded',show);
+    document.addEventListener('fullscreenchange',()=>setTimeout(()=>window.dispatchEvent(new Event('resize')),200));
+  }catch(e){}
+})();
