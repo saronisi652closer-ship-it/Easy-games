@@ -520,8 +520,8 @@
         spType: 'tin_spin', spPower: 295, desc: '【2連】サーベル斬り×2 / 【SP】ネジ全開・両腕高速回転' },
       { id: 'ufo', name: 'ユーフォー・タコ', icon: '🐙', role: '円盤タコ星人', hp: 980, regen: 0, speed: 31, atk: 76, scale: 0.85, hoverY: 7.2, maxJumps: 2, comboMax: 2,
         spType: 'tako_fist', spPower: 305, desc: '【2連】タコ足ムチ×2 / 【SP】円盤から巨大タコ足パンチ突撃' },
-      { id: 'flytrap', name: 'ハエトリゴン', icon: '🌱', role: '2倍HP・回復なし', hp: 2000, regen: 0, speed: 14, atk: 64, scale: 2.0, hoverY: 0, maxJumps: 0, comboMax: 4,
-        spType: 'vine_beams', spPower: 325, desc: '【超耐久】通常の2倍HP(2000)・自動回復なし / 【4連】射程が伸びるツル4回 / 【JUMP】花粉ブレス / 【GUARD】ツル盾 / 【SP】口＆4本ツルの5連ビーム' },
+      { id: 'flytrap', name: 'ハエトリゴン', icon: '🌱', role: '1.3倍HP・回復なし', hp: 1300, regen: 0, speed: 14, atk: 64, scale: 2.0, hoverY: 0, maxJumps: 0, comboMax: 4,
+        spType: 'vine_beams', spPower: 290, desc: '【高耐久】通常の1.3倍HP(1300)・自動回復なし / 【4連】射程が伸びるツル4回 / 【JUMP】花粉ブレス / 【GUARD】ツル盾 / 【SP】口＆4本ツルの5連ビーム' },
       { id: 'magma', name: 'マグマドン', icon: '🌋', role: '長尾・ゆっくり再生', hp: 1150, regen: 4.5, speed: 20, atk: 82, scale: 1.5, hoverY: 0, maxJumps: 1, comboMax: 3,
         spType: 'magma_charge', spPower: 335, desc: '【再生】ゆっくりHP回復(+4.5/s)＆着地衝撃波 / 【3連】かみつき→ふみつけ→長尾回転 / 【SP長押】背中のマグマ穴が順に光って極太溶岩ビーム＆大爆発(自分も反動)' },
       { id: 'armadillo', name: 'アルマジロン', icon: '🛡️', role: '丸まり回転＆防御', hp: 1100, regen: 0, speed: 22, atk: 78, scale: 1.1, hoverY: 0, maxJumps: 1, comboMax: 3,
@@ -1601,7 +1601,7 @@
         let reach = isFinisher ? 15.2 : 13.0;
         if (this.cfg.id === 'flytrap') {
           // ハエトリゴン：1〜4回のコンボごとにツルの攻撃距離が伸びる
-          reach = 15.0 + this.comboStep * 5.2;
+          reach = 14.0 + this.comboStep * 3.0;
         } else if (this.cfg.id === 'magma') {
           // マグマドン：1噛みつき(16) -> 2踏みつけ(17.5) -> 3しっぽ360度回転(24.5)
           reach = this.comboStep === 3 ? 24.5 : (this.comboStep === 2 ? 17.5 : 16.0);
@@ -1630,7 +1630,7 @@
         if (dist <= reach + opponent.radius) {
           const mult = isFinisher ? 1.3 : 1.0;
           const dmg = Math.round(this.cfg.atk * mult);
-          applyDamage(this, opponent, dmg, isFinisher ? 34 : 16, isFinisher);
+          applyDamage(this, opponent, dmg, this.cfg.id === 'flytrap' ? (isFinisher ? 20 : 7) : (isFinisher ? 34 : 16), isFinisher);
           this.addEnergy(18);
         }
       }
@@ -2400,7 +2400,7 @@
             }
           }
 
-          const attackRange = this.cfg.id === 'flytrap' ? 24 : (this.cfg.id === 'magma' ? 16.5 : (this.cfg.id === 'mole' ? 9.5 : 14.0));
+          const attackRange = this.cfg.id === 'flytrap' ? 20 : (this.cfg.id === 'magma' ? 16.5 : (this.cfg.id === 'mole' ? 9.5 : 14.0));
           if (dist > attackRange) {
             this.aiMoveX = dx / dist;
             this.aiMoveZ = dz / dist;
@@ -2667,6 +2667,17 @@
         pCfg.id === 'magma' ? '長押SP' : 'SP技';
     }
 
+    function goFullLandscape() {
+      try {
+        const d = document.documentElement, req = d.requestFullscreen || d.webkitRequestFullscreen;
+        const touch = (window.matchMedia && matchMedia('(pointer:coarse)').matches) || ('ontouchstart' in window);
+        const lock = () => { try { if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => {}); } catch (e) {} };
+        if (!touch || !req) return;
+        if (document.fullscreenElement || document.webkitFullscreenElement) { lock(); return; }
+        const pr = req.call(d, { navigationUI: 'hide' });
+        if (pr && pr.then) pr.then(lock).catch(() => {});
+      } catch (e) {}
+    }
     function initRound() {
       state.phase = 'BATTLE';
       state.roundEnding = false;
@@ -2701,6 +2712,7 @@
       KJ.set('pref', { p1: state.p1Idx, cpu: state.cpuIdx, diff: state.difficulty });
       sfx.init();
       sfx.playRush();
+      goFullLandscape();
       state.round = 1;
       state.p1Wins = 0;
       state.cpuWins = 0;
