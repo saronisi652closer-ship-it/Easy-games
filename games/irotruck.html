@@ -51,7 +51,7 @@ label.chk{display:block;font-size:12px;color:#8a7f72;margin-top:4px}
       ⚠️ 駐車場（5台）があふれたらゲームオーバー。全部回収でクリア！
     </div>
     <div class="grid" id="stages"></div>
-    <div class="sub">★ は25×25マスのむずかしいステージ</div>
+    <div class="sub">★ は25×25、★★ は30×30マスのむずかしいステージ<br>トラックの並びは毎回ランダム（かならずクリアできる並び）</div>
     <button class="b s w" id="impBtn">📷 自分の画像で遊ぶ</button>
     <label class="chk"><input type="checkbox" id="bgChk" checked> 背景っぽい色をのぞく</label>
     <div class="err" id="impErr"></div>
@@ -193,7 +193,13 @@ const STAGES=[
 {name:"ゆうひとふね",hard:true,art:["VVVVVVVVVVVVVVVVVVVVVVVVV", "VVVpppVVVVVVVVVVVVVVVVVVV", "VpppppppVVVVVVVVVVVVVVVVV", "VVVVVVVVVVVVVVVVVVVVVVVVV", "PPPPPPPPPPPPPPPPPppppPPPP", "PPPPPPPPPPPPPPPppppppppPP", "PPPPPPPPPPPPPPPPPPPPPPPPP", "PPPPPKPPPPPPPPPPPPPPPPPPP", "OOOOOKWOOOOOOOOOOOOOOOOOO", "OOOOOKWOOOOOOOOOOOOOOOOOO", "OOOOOKWWOyyyyyYOOOOOOOOOO", "OOOOWKWWOYYYYYYYOOOOOOOOO", "yyyyWKWWWYYYYYYYYyyyyyyyy", "yyyWWKWWWYYYYYYYYYyyyyyyy", "yyyWWKWWWWYYYYYYYYyyyyyyy", "UUUWWKWWWWUUUUUUUUUUUUUUU", "UUWWWKWWWWWYYYYULLUUUUUUU", "UBBBBBBBBBBYYYUUUUUUUUUUU", "UUBBBBBBBBYYYYYYUULLUUUUU", "UUBBBBBBBBUYYYUUUUUUUUUUU", "NNNNNNNNNNNNNNNNNNNNNNNNN", "NNNLLNNNNNNYYYNNNNNNNNNNN", "NNNNNNNNNNNNNNNNNNNNLLNNN", "NNNNNNLLNNNNYNNNNNNNNNNNN", "NNNNNNNNNNNNNNNNNNNNNNNNN"]},
 {name:"ケーキ",hard:true,art:["............Y............", "...........YOY...........", "...........pPp...........", "...........pPp...........", "....GgG....pPp....GgG....", "....RRR..G.pPp.G..RRR....", "....RDR.RRRpPpRRR.RDR....", "....RRR.RRRpPpRRR.RRR....", "...WWW.WWWWWWWWWWW.WWW...", "...WWWWWWWWWWWWWWWWWWW...", "...WWWWWWWWWWWWWWWWWWW...", "...WWWWWWWWWWWWWWWWWWW...", "...CCCCCCWWWWWWWCCCCCC...", "...WRRWWRRWWRRWWRRWWRR...", "...WRRWWRRWWRRWWRRWWRR...", "...CCCCCCCCCCCCCCCCCCC...", "...CCCCCCCCCCCCCCCCCCC...", "...WWWWWWWWWWWWWWWWWWW...", "...CCCCCCCCCCCCCCCCCCC...", "...CCCCCCCCCCCCCCCCCCC...", "...ppppppppppppppppppp...", "..SWWWWWWWWWWWWWWWWWWWS..", ".SWWWWWWWWWWWWWWWWWWWWWS.", "..SSSSSWWWWWWWWWWWSSSSS..", "........SSSSSSSSS........"]},
 {name:"おしろ",hard:true,art:[".........................", "....KRR.....U.......KRR..", "....K......UUU......K....", "....K......UUU......K....", "....N.....UUUUU.....N....", "....NN...UUUUUUU....NN...", "...NNN...TTTTTTT...NNN...", "...NNNN..TTTTTTT...NNNN..", "...NNNN..TTKTKTT...NNNN..", "..NNNNNN.TTKTKTT..NNNNNN.", "..TTTTT.STTTTTTTS.TTTTT..", "..TTTTTSSTTTTTTTSSTTTTT..", "..TTKTTSSSSSSSSSSSTTKTT..", "..TTKTTSKSSSSSSSKSTTKTT..", "..TTTTTSKSSSSSSSKSTTTTT..", "..TTTTTSSSSBBBSSSSTTTTT..", "..TTKTTSSSBBKBBSSSTTKTT..", "..TTKTTSSSBBKBBSSSTTKTT..", "..TTTTTSSSBBKBBSSSTTTTT..", "..TTTTTSSSBBKBBSSSTTTTT..", "..TTTTTSSSBBKBBSSSTTTTT..", "GGTTTTTSSSBBKBBSSSTTTTTGG", "GGGGGGGBBBBBBBBBBBGGGGGGG", "GGGGGGGLLLLLLLLLLLGGGGGGG", "LLLLLLLLLLLLLLLLLLLLLLLLL"]},
-{name:"オウム",hard:true,art:[".........................", "...........R.............", ".........WWWRR...........", "........WWWWWRR..........", ".......SWKKWWRR..........", ".......SSWWWRRYYY........", ".......KSRRRRYYYYY.......", "......KKSRRRRYYYYY.......", "........RRRRRYYYYY.......", "........RRRRGGGGGGG......", "........RRRRGGGGGGG......", ".......RRRRRGGGGGGG......", "........RRRRRUUUUU.......", "........RRRRRUUUUU.......", "........RRRRRUUUUU...Gg..", "........RRRRRUUUU...GGG..", ".........RRRRRUNU....G...", ".gG......KKRKKUUN...BBBBB", ".GGG.....KK.KKUUNBBBBBBBB", "..G..BBBBKKBKKUUNBBB.....", "BBBBBBBBBBBBB.UUN........", "BBBBB.........UUN........", "..............UUN........", "..............UUU........", "........................."]}
+{name:"オウム",hard:true,art:[".........................", "...........R.............", ".........WWWRR...........", "........WWWWWRR..........", ".......SWKKWWRR..........", ".......SSWWWRRYYY........", ".......KSRRRRYYYYY.......", "......KKSRRRRYYYYY.......", "........RRRRRYYYYY.......", "........RRRRGGGGGGG......", "........RRRRGGGGGGG......", ".......RRRRRGGGGGGG......", "........RRRRRUUUUU.......", "........RRRRRUUUUU.......", "........RRRRRUUUUU...Gg..", "........RRRRRUUUU...GGG..", ".........RRRRRUNU....G...", ".gG......KKRKKUUN...BBBBB", ".GGG.....KK.KKUUNBBBBBBBB", "..G..BBBBKKBKKUUNBBB.....", "BBBBBBBBBBBBB.UUN........", "BBBBB.........UUN........", "..............UUN........", "..............UUU........", "........................."]},
+{name:"ひまわり",hard:true,art:["LLLLLLLLLLLLLLLLLLLLLLLLLLLLLL", "LLLLLLLLLLLLLLYYLLLLLLLLLyLLLL", "LLLLLLLLLLYYYYYYYYYYLLLyyyyyLL", "LLLLLLLLLYYYYYYYYYYYYLLyyyyyLL", "LLLLLLLLLYYYYYYYYYYYYLyyyyyyyL", "LLLLLLLYYYYYYYYYYYYYYYYyyyyyLL", "LLLLLLYYYYYYYYBBYYYYYYYyyyyyLL", "LLLLLLYYYYYYBBBBBBYYYYYYLyLLLL", "LLLLLLYYYYYBBBBBBBBYYYYYLLLLLL", "LLLLLLYYYYYBBKBBKBBYYYYYLLLLLL", "LLLLLYYYYYBBBBBKBBBBYYYYYLLLLL", "LLLLLYYYYYBBKBBBBBBBYYYYYLLLLL", "LLLLLLYYYYYBBBKBKBBYYYYYLLLLLL", "LLLLLLYYYYYBBBBBBBBYYYYYLLLLLL", "LLLLLLYYYYYYBBBBBBYYYYYYLLLLLL", "LLLLLLYYYYYYYYBBYYYYYYYYLLLLLL", "LLLLLLLYYYYYYYYYYYYYYYYLLLLLLL", "LLLLLLGLLYYYYYYYYYYYYGGLLLLLLL", "LLLLLLGGGYYYYYYYYYYYYGGLLLLLLL", "LLLLLLLGGGYYYYYYYYYYGGLLLLLLLL", "LLLLLLLGGGGGLLYYLLGGGGLLLLLLLL", "LLLLLLLGGGGGGGggLLLLLLLLLLLLLL", "LLLLLLLLGGGLLLggLLLLLLLLLLLLLL", "LLLLLLLLLLLLLLggLLLLLLLLLLLLLL", "LLLLLLLLLLLLLLggLLLLLLLLLLLLLL", "LLLLLLLLLLLLLLggLLLLLLLLLLLLLL", "GGGGGGGGGGGGGGggGGGGGGGGGGGGGG", "GGGGGGGGGGGGGGggGGGGGGGGGGGGGG", "gggggggggggggggggggggggggggggg", "gggggggggggggggggggggggggggggg"]},
+{name:"くじら",hard:true,art:["LLLLLLLLLLLLLLLLLLLLLLLLLLLLLL", "LLLLLLLLLLWLLLLWLLLLLLLLYYYLLL", "LLLLLLLLLWLWLLWLWLLLLLLYYYYYLL", "LLLLLLLLLLLLWWLLLLLLLLLYYYYYLL", "LLLLLLLLLLLLLLLLLLLLLLLYYYYYLL", "LLLLLLLLLLLLWLLLLLLLLLLLYYYLLL", "LLLLLLLLLLLLLWLLLLLLLLLLLLLLNL", "LLLLLLLLLLLLWLLLLLLLLLLLLLLNNL", "LLLLLLLLLLLLLLLLLLLLLLLLLLNNNL", "LLLLLLLLLLLLLLLLLLLLLLLLLNNNNL", "LLLLLLLLLLNNNNNNNLLLLLLLNNNNNL", "LLLLLLLNNNNNNNNNNNNNLLLNNNNNNL", "LLLLLLNNNNNNNNNNNNNNNLNNNNNNLL", "LLLLLNNKNNNNNNNNNNNNNNNNNNNLLL", "LLLLNNNWKNNNNNNNNNNNNNNNNNLLLL", "LLLLNNNNNNNNNNNNNNNNNNNNNLLLLL", "LLLNNNNNNNNNNNNNNNNNNNNNLLLLLL", "LLLLNNNNNNNNNNNNNNNNNNNLLLLLLL", "LLLLLLLLLLLLLLLLLLLLLLNLLLLLLL", "LLLLUWWWWWWWWWWWWWWWWNULLLLLLL", "WWUUWWWWWWWWWWWWWWWWWWUUWWUUWW", "UUUUUUUWWWWWWWWWWWWWUUUUUUUUUU", "UUUUUUUUUUNNNNNNNUUUUUUUUUUUUU", "UUUUUUUUUUUUUUUUUUUUUUUUUUUUUU", "UUUUUUUUUUUUUUUUUUUUUUUUUUUUUU", "UUUUUUUUUUUUUUUUUUUUUUUUUUUUUU", "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNN", "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNN", "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNN", "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNN"]},
+{name:"とうだい",hard:true,art:["yyLLLLLLLLLLRRRLLLLLLLLLLLLyyL", "yyyyyLLLLLLRRRRRLLLLLLLyyyyyyL", "yyyyyyyyLLRRRRRRRLLyyyyyyyyyyL", "yyyyyyyyLLKYYYYYYKLyyyyyyyyyyL", "yyyyyLLLLLKYYYYYYKLLLLLyyyyyyL", "yyLLLLLLLLKKKKKKKKLLLLLLLLLyyL", "LLLLLLLLLLLWWWWWLLLLLLLLLLLLLL", "LLLLLLLLLLLWWWWWLLLLLLLLLLLLLL", "LLLLLLLLLLLWWWWWLLLLLLLLLLLLLL", "LLLLLLLLLLWWWWWWWLLLLLLLLWLLLL", "LLLLLLLLLLRRRRRRRLLLLLLWWLWWLL", "LLLLLLLLLLRRRRRRRLLLLLLLLLLLLL", "LLLLLLLLLLRRRRRRRLLLLLLLLLLLLL", "LLLLLLLLLLWWWWWWWLLLLLLLLLLLLL", "LLLLLLLLLLWWWBBWWLLLLLLLLLLLLL", "LLTTTTTLLRRRRBBRRRLLLLLLLLLLLL", "TTTTTTTTTRRRRBBRRRLLLLLLLLLLLL", "TTTTTTTTTRRRRRRRRRLLLLLLLLLLLL", "TTTSSSSTTTTTTTTLLLLLLLLLLLLLLL", "SSSSSSSSSTTTTTTTLLLLLLLLLLLLLL", "SSSSSSSSSSSTTTTTTLLLLLLLLLLLLL", "SSSSSSTTTTTTTTTTTTLLLLLLLLLLLL", "UUUUUUUUUUUUUUUUUUUUUUUUUUUUUU", "UUUUUUUUUUUUUUUUUUUUUUUUUUUUUU", "UWWUUUWWUUUWWUUUWWUUUWWUUUWWUU", "UUUUUUUUUUUUUUUUUUUUUUUUUUUUUU", "UUUUUUUUUUUUUUUUUUUUUUUUUUUUUU", "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNN", "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNN", "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNN"]},
+{name:"ペンギン",hard:true,art:["LLLLLLLLLLLLLLLLLLLLLLLLLLLLLL", "LLLLLLLLLLLLLLLLLLLLLLLLLLLLLL", "LLLLLLLLLLLLLLLLLLLLLLWLLLLLLL", "LLLWLLLLLLLLLKKKKKLLLLLLLLLLLL", "LLLLLLLLLLLLKKKKKKKLLLLLLLLLLL", "LLLLLLLLWLLKKKKKKKKKLLLLLLLLLL", "LLLLLLLLLLLKWWWKWWWKLLLLLLWLLL", "LLLLLLLLLLKKWKWKWKWKKLLLLLLLLL", "LLLLLLLLLLLKWWWKWWWKLLLLLLLLLL", "LLLLLLLLLLLKKKOOKKKKLLLLLLLLLL", "LLLLLWLLLLKKKKKKKKKKKLLLLLLLLL", "LLLLLLLLLLKKKKKKKKKKKLLLLWLLLL", "LLLLLLLLLKKKKWWWWWKKKKLLLLLLLL", "LLLLLLLLLKKKWWWWWWWKKKLLLLLLLL", "LLLLLLLKLKKKWWWWWWWKKKKLLLLLLL", "LLLLLLLKLKKWWWWWWWWWKKKLLWWLLL", "LLLLLLKKKKKWWWWWWWWWKKKKWWWWLL", "LLLLLKKKLKKWWWWWWWWWKKKKKWWWWL", "LLLLWKKKLKKWWWWWWWWWKKKKKWWWWL", "LLLWKKKKWKKWWWWWWWWWKKKKKKWWWL", "LLLWWWKKWKKWWWWWWWWWKKKKWWWWWL", "LLWWWWWWWWKWWWWWWWWWKWWWWWWWWL", "LWWWWWWWWWKKWWWWWWWKKWWWWWWWWL", "WWWWWWWWWWWKWWWWWWWKWWWWWWWWWL", "WWWWWWWWWWWWKWWWWWKWWWWWWWWWWW", "WWWWWWWWWWWOOOWWWOOOWWWWWWWWWW", "WWWWWWWWWWWOOOWWWOOOWWWWWWWWWW", "SSSSSSSSSSSSSSSSSSSSSSSSSSSSSS", "SSSSSSSSSSSSSSSSSSSSSSSSSSSSSS", "SSSSSSSSSSSSSSSSSSSSSSSSSSSSSS"]},
+{name:"ハンバーガー",hard:true,art:["..............................", "..............................", "..........OOOOOOOOOO..........", ".......OOOOOOOyOOOOOOOO.......", "......OOOyOOOOOOOOOyOOOO......", "....OOOOOOOOOOOOOOOOOOOOOO....", "....OOOOOOOyOOOOOyOOOOOOOO....", "...OOOOyOOOOOOOOOOOOOOyOOOO...", "...OOOOOOOOOOOOOOOOOOOOOOOO...", "...OOOOOOOOOOOOOOOOOOOOOOOO...", "...OOOOOOOOOOOOOOOOOOOOOOOO...", ".GGgGGgGGgGGgGGgGGgGGgGGgGGgG.", "..RRRRRRRRRRRRRRRRRRRRRRRRRR..", ".YYYYYYYYYYYYYYYYYYYYYYYYYYYY.", "Y..YYYYYYYYYYYYYYYYYYYYYYYY..Y", "..BBBBBBBBBBBBBBBBBBBBBBBBBB..", "..BKBBKBBKBBKBBKBBKBBKBBKBBB..", "..BBBBBBBBBBBBBBBBBBBBBBBBBB..", "..BBBBBBBBBBBBBBBBBBBBBBBBBB..", "..RRRRRRRRRRRRRRRRRRRRRRRRRR..", "..OOOOOOOOOOOOOOOOOOOOOOOOOO..", "..OOOOOOOOOOOOOOOOOOOOOOOOOO..", "..OOOOOOOOOOOOOOOOOOOOOOOOOO..", "..OOOOOOOOOOOOOOOOOOOOOOOOOO..", "..OCCCCCCCCCCCCCCCCCCCCCCCCO..", "...OOOOOOOOOOOOOOOOOOOOOOOO...", "....BBBBBBBBBBBBBBBBBBBBBB....", "..............................", "..............................", ".............................."]},
+{name:"にじとくも",hard:true,art:["LLLLLyyyLLLLLLLLLLLLLLLLLLLLLL", "LLLyLLLLLyLLLLLLLLLLLLLLLLLLLL", "LLyLLYYYLLyLLLLLLLLLLLLLLLLLLL", "LLLLYYYYYLLLLLLLLLLLLLWLLLLLLL", "LyLYYYYYYYLyLLLLLLLLWWLWWLLLLL", "LyLYYYYYYYLyLLLLLLLLLLLLLLLLLL", "LyLYYYYYYYLyLLLLLLLLLLLLLLLLLL", "LLLLYYYYYLLLLLLLLLLLLLLLLLLLLL", "LLyLLYYYLLyLLLLLLLLLLLLLLLLLLL", "LLLyLLLLLyLLLLLLLLLLLLLLLLLLLL", "LLLLLyyyLLLLLLLLLLLLLLLLLLLLLL", "LLLLLLLLLLLLLLLLLLLLLLLLLLLLLL", "LLLLLLLLLLLRRRRRRRRRLLLLLLLLLL", "LLLLLLLLLRRRRRRORRRRRRLLLLLLLL", "LLLLLLLRRROOOOOOOOOOORRRLLLLLL", "LLLLLLRROOOOYYYYYYYOOOORRLLLLL", "LLLLRRROOOYYYYYYYYYYYOOORRRLLL", "LLLLRROOYYYGGGGGGGGGYYYOORRLLL", "LLLRROWWWYGGGGUUUGGGGYYYOOWWWL", "LLWWWWWWWWGUUUUUUUUUGGWWWWWWWW", "LWWWWWWWWWUUUVVVVVUUUWWWWWWWWW", "LWWWWWWWWWUVVVVVVVVVUWWWWWWWWW", "LWWWWWWWWWVVLLLLLLLVVWWWWWWWWW", "WWWWWWWWWWWLLLLLLLLLWWWWWWWWWW", "RWWWWWWWWWLLLLLLLLLLLWWWWWWWWW", "RRWWWWWWWVLLLLLLLLLLLVWWWWWWWR", "RROYYGUUVVLLLLLLLLLLLVVUUGYYOR", "GGGGGGGGGGGGGGGGGGGGGGGGGGGGGG", "GGGGGGGGGGGGGGGGGGGGGGGGGGGGGG", "GGGGGGGGGGGGGGGGGGGGGGGGGGGGGG"]}
 ];
 const LANES=4,SLOTS=5,MAXROAD=6,GAP=1.9,SPEED=6;
 const ROADR=1.75,GAPR=0.12,OFFR=GAPR+(ROADR-GAPR)/2,CORNER=OFFR*Math.PI/2;
@@ -259,7 +265,39 @@ function depthMap(g){
   }}
   return d;
 }
-function makeTrucks(g,noise){
+// いろあつめトラック：ランダム並び＋詰み判定（1台ずつ出す前提の貪欲法で解けるか）
+function makeChecks(W,H){const a=[];for(let i=0;i<W;i++)a.push(0,i);for(let j=0;j<H;j++)a.push(1,H-1-j);for(let j=0;j<W;j++)a.push(2,W-1-j);for(let j=0;j<H;j++)a.push(3,j);return a}
+function lap(g,W,H,CK,color,left,undo){let got=0;
+  for(let k=0;k<CK.length&&got<left;k+=2){const s=CK[k],i=CK[k+1];let fx=-1,fy=-1;
+    if(s===0){for(let y=H-1;y>=0;y--)if(g[y][i]){fx=i;fy=y;break}}
+    else if(s===1){for(let x=W-1;x>=0;x--)if(g[i][x]){fx=x;fy=i;break}}
+    else if(s===2){for(let y=0;y<H;y++)if(g[y][i]){fx=i;fy=y;break}}
+    else{for(let x=0;x<W;x++)if(g[i][x]){fx=x;fy=i;break}}
+    if(fx>=0&&g[fy][fx]===color){g[fy][fx]=null;got++;if(undo)undo.push(fx,fy)}}
+  return got}
+function solvable(grid,order,nl,SLOTS,budget){
+  const H=grid.length,W=grid[0].length,CK=makeChecks(W,H),g=grid.map(r=>r.slice());
+  let remain=0;g.forEach(r=>r.forEach(c=>{if(c)remain++}));
+  const lanes=Array.from({length:nl},()=>[]);order.forEach((t,i)=>lanes[i%nl].push({color:t.color,left:t.cap}));
+  const park=[];const head=new Array(nl).fill(0);let steps=0;
+  const gain=(t)=>{const u=[];const n=lap(g,W,H,CK,t.color,t.left,u);for(let k=0;k<u.length;k+=2)g[u[k+1]][u[k]]=t.color;return n};
+  while(remain>0){if(++steps>4000||(budget&&performance.now()>budget))return false;
+    let best=null;
+    const cands=[];for(let l=0;l<nl;l++)if(head[l]<lanes[l].length)cands.push({t:lanes[l][head[l]],l});park.forEach((t,p)=>cands.push({t,p}));
+    for(const c of cands){const n=gain(c.t);const done=n===c.t.left;
+      if(n===0)continue;if(!done&&c.l!=null&&park.length>=SLOTS)continue;
+      const sc=(done?1000:0)+n;if(!best||sc>best.sc)best={...c,sc,n,done}}
+    if(best){lap(g,W,H,CK,best.t.color,best.t.left);best.t.left-=best.n;remain-=best.n;
+      if(best.l!=null){head[best.l]++;if(!best.done)park.push(best.t)}else if(best.done)park.splice(best.p,1);continue}
+    // どれも何も積めない → 空きがあればレーンの先頭を駐車場へ回す（次のトラックが一番積めるレーン）
+    if(park.length>=SLOTS)return false;
+    let bl=-1,bs=-1;for(let l=0;l<nl;l++){if(head[l]>=lanes[l].length)continue;const nx=lanes[l][head[l]+1];const s=nx?gain(nx):0;if(s>bs){bs=s;bl=l}}
+    if(bl<0)return false;park.push(lanes[bl][head[bl]]);head[bl]++}
+  return true}
+function chunks(by){const out=[];for(const col in by){let n=by[col],i=0;while(i<n){const rest=n-i;let s=rest<=12?rest:6+Math.floor(Math.random()*5);if(rest-s>0&&rest-s<4)s=rest;out.push({color:col,cap:s});i+=s}}return out}
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a}
+
+function depthTrucks(g,noise){
   const dm=depthMap(g),by={};
   g.forEach((row,y)=>row.forEach((c,x)=>{if(c)(by[c]=by[c]||[]).push(dm[y][x]);}));
   const out=[];
@@ -269,12 +307,22 @@ function makeTrucks(g,noise){
       const rest=ds.length-i;let s=rest<=12?rest:6+Math.floor(Math.random()*5);
       if(rest-s>0&&rest-s<4)s=rest;
       const ch=ds.slice(i,i+s),avg=ch.reduce((a,b)=>a+b,0)/s;
-      out.push({color:col,cap:s,left:s,key:avg+Math.random()*noise,p:0,ci:0,shake:0});
+      out.push({color:col,cap:s,key:avg+Math.random()*noise});
       i+=s;
     }
   }
-  out.sort((a,b)=>a.key-b.key);
-  return out;
+  return out.sort((a,b)=>a.key-b.key);
+}
+const laneCount=n=>n<8?Math.max(2,Math.min(LANES,n)):LANES;
+function makeTrucks(g,noise){
+  const by={};g.forEach(r=>r.forEach(c=>{if(c)by[c]=(by[c]||0)+1;}));
+  const end=performance.now()+350;let order=null;
+  // 1) まったくのランダム（毎回ちがう）
+  while(!order&&performance.now()<end){const tr=shuffle(chunks(by));if(solvable(g,tr,laneCount(tr.length),SLOTS,end))order=tr;}
+  // 2) 見つからない時は、外側の色ほど先に来やすいランダム
+  for(const nz of[12,8,5,3,2,1]){if(order)break;for(let k=0;k<6&&!order;k++){const tr=depthTrucks(g,nz);if(solvable(g,tr,laneCount(tr.length),SLOTS))order=tr;}}
+  if(!order)order=depthTrucks(g,0);
+  return order.map(t=>({color:t.color,cap:t.cap,left:t.cap,p:0,ci:0,shake:0}));
 }
 function buildChecks(W,H){
   const a=[],c=CORNER;
@@ -290,7 +338,7 @@ function startGame(def){
   const H=grid.length,W=grid[0].length;
   let total=0;grid.forEach(r=>r.forEach(c=>{if(c)total++;}));
   const trucks=makeTrucks(grid,def.noise);
-  const nl=trucks.length<8?Math.max(2,Math.min(LANES,trucks.length)):LANES;
+  const nl=laneCount(trucks.length);
   const lanes=Array.from({length:nl},()=>[]);
   trucks.forEach((t,i)=>lanes[i%nl].push(t));
   G={W,H,grid,orig:def.grid,total,remaining:total,lanes,slots:Array(SLOTS).fill(null),road:[],parts:[],fx:[],state:'play',timer:0,time:0};
@@ -516,14 +564,14 @@ cv.addEventListener('pointerdown',e=>{
 
 /* ---------- 画面 ---------- */
 function hideAll(){['menu','pause','result'].forEach(i=>$(i).classList.add('hide'));}
-const DEFS=STAGES.map((s,i)=>({id:'s'+i,idx:i,name:s.name,hard:!!s.hard,grid:artToGrid(s.art),noise:s.hard?2.5+(i-6)*.5:.4+i*.7}));
+const DEFS=STAGES.map((s,i)=>({id:'s'+i,idx:i,name:s.name,hard:!!s.hard,big:s.art.length>=28,grid:artToGrid(s.art),noise:s.hard?2.5+(i-6)*.5:.4+i*.7}));
 function showMenu(){
   G=null;cur=null;render();hideAll();$('menu').classList.remove('hide');
   const box=$('stages');box.innerHTML='';
   DEFS.forEach(d=>{
     const el=document.createElement('div');el.className='st';
     const c=document.createElement('canvas');drawThumb(c,d.grid);
-    el.appendChild(c);el.appendChild(document.createTextNode(`${d.hard?'★':''}${d.idx+1}. ${d.name}`));if(d.hard)el.style.borderColor='#f6c836';
+    el.appendChild(c);el.appendChild(document.createTextNode(`${d.big?'★★':d.hard?'★':''}${d.idx+1}. ${d.name}`));if(d.hard)el.style.borderColor='#f6c836';
     if(save.cleared[d.id]){const ok=document.createElement('span');ok.className='ok';ok.textContent='✓';el.appendChild(ok);}
     el.onclick=()=>{ac();startGame(d);};
     box.appendChild(el);
@@ -561,7 +609,7 @@ $('file').onchange=e=>{
 };
 function d2(a,b){const r=a[0]-b[0],g=a[1]-b[1],c=a[2]-b[2];return r*r+g*g+c*c;}
 function imageToGrid(img,rmBg){
-  const N=25,sc=N/Math.max(img.width,img.height),W=Math.max(4,Math.round(img.width*sc)),H=Math.max(4,Math.round(img.height*sc));
+  const N=30,sc=N/Math.max(img.width,img.height),W=Math.max(4,Math.round(img.width*sc)),H=Math.max(4,Math.round(img.height*sc));
   const c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');
   x.imageSmoothingEnabled=false;x.drawImage(img,0,0,W,H);
   const d=x.getImageData(0,0,W,H).data,px=[],mask=[];
