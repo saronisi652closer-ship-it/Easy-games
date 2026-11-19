@@ -132,7 +132,7 @@ function stat(id){const g=k=>Save.get(k);
   if(id==='batting')return `最長 ${g('bt_best')||0}m・10球合計 ${g('bt_bestSum')||0}m`;
   if(id==='bomber'){const b=g('bm_best')||0;return b?`ベスト ${b}点・ステージ${g('bm_stage')||1}まで`:'まだ遊んでいません'}
   if(id==='escape'){const n=[g('es_clears'),g('es_clears2'),g('es_clears3')].filter(v=>v>0).length;return n?`脱出 ${n}/3部屋`+(g('es_best')!=null?`・部屋1ベスト ${fmt(g('es_best'))}`:''):(g('es_save')?'つづきから遊べます':'まだ遊んでいません')}
-  if(id==='irotruck'){const s=g('it_save')||{};const n=Object.keys((s&&s.cleared)||{}).length;return n?`${n}/12ステージクリア`:'まだ遊んでいません'}
+  if(id==='irotruck'){const s=g('it_save')||{};const n=Object.keys((s&&s.cleared)||{}).length;return n?`${n}/18ステージクリア`:'まだ遊んでいません'}
   if(id==='chuta'){const n=g('ch_cleared')||0;return n?`${n}/15ステージクリア・ベスト ${g('ch_best')||0}点`:'まだ遊んでいません'}
   if(id==='kaiju'){const r=g('kj_rec');return r&&(r.w||r.l)?`通算 ${r.w}勝 ${r.l}敗`:'まだ遊んでいません'}
   if(id==='fort'){const n=v=>typeof v==='number'?v:0;const bs=[n(g('fo_best')),n(g('fo_best2')),n(g('fo_best3'))];const c=bs.filter((v,i)=>v>=10||g('fo_clear'+(i+1))).length;return bs[0]?`クリア ${c}/3マップ・マップ1 第${bs[0]}波まで`:'まだ遊んでいません'}
